@@ -15,18 +15,17 @@ IF [%1]==[] (
   GOTO PARAMCONTINUE
 )
 
-IF NOT [%1]==[--toolset] (
-     SET BOOSTPATH=%1
-)
-
 IF [%1]==[--toolset] (
   SET MSVCTOOLSET=%2
   SHIFT
+  SHIFT
 )
 
+SET BOOSTPATH=%1
+
 IF [%2]==[-x64] (
-	SET BUILDTARGETPARAM=architecture=ia64
-	SET BUILDTARGETPATH=architecture-ia64\
+	SET BUILDTARGETPARAM=address-model=64
+	SET BUILDTARGETPATH=address-model-64\
 )
 
 rem SHIFT
@@ -50,12 +49,10 @@ IF NOT EXIST "%BOOSTPATH%\boost\regex.hpp" (
    GOTO BOOSTNOTFOUND
 )
 
-IF NOT EXIST "%BOOSTPATH%\bjam\bin\bjam.exe" (
+IF NOT EXIST "%BOOSTPATH%\bjam.exe" (
 	ECHO Building BJAM, the boost build tool
-	PUSHD %BOOSTPATH%\tools\build\v2
+	PUSHD %BOOSTPATH%
 	CALL bootstrap.bat
-
-	%BOOSTPATH%\tools\build\v2\b2 --prefix=%BOOSTPATH%\bjam install
 	POPD
 )
 
@@ -110,18 +107,33 @@ ECHO.
 
 PUSHD %BOOSTPATH%\libs\regex\build
 
-%BOOSTPATH%\bjam\bin\bjam %TOOLSETCOMMAND% variant=release threading=multi link=static runtime-link=static %BUILDTARGETPARAM%
+%BOOSTPATH%\bjam %TOOLSETCOMMAND% variant=release threading=multi link=static runtime-link=static %BUILDTARGETPARAM%
 IF NOT ERRORLEVEL 0 (
 	GOTO BUILDERROR
 )
 
-%BOOSTPATH%\bjam\bin\bjam %TOOLSETCOMMAND% variant=debug threading=multi link=static runtime-link=static %BUILDTARGETPARAM%
+%BOOSTPATH%\bjam %TOOLSETCOMMAND% variant=debug threading=multi link=static runtime-link=static %BUILDTARGETPARAM%
 IF NOT ERRORLEVEL 0 (
 	GOTO BUILDERROR
 )
 
 IF NOT [%MSVCTOOLSET%]==[] (
     GOTO TOOLSETKNOWN
+)
+
+:: VS2015-XP
+IF EXIST %BOOSTPATH%\bin.v2\libs\regex\build\msvc-14.0_xp\release\%BUILDTARGETPATH%link-static\runtime-link-static\threading-multi\libboost_regex-vc140-mt-s-%BOOSTVERSION%.lib (
+	SET MSVCTOOLSET=msvc-14.0_xp
+)
+
+:: VS2015
+IF EXIST %BOOSTPATH%\bin.v2\libs\regex\build\msvc-14.0\release\%BUILDTARGETPATH%link-static\runtime-link-static\threading-multi\libboost_regex-vc140-mt-s-%BOOSTVERSION%.lib (
+	SET MSVCTOOLSET=msvc-14.0
+)
+
+:: VS2013-XP
+IF EXIST %BOOSTPATH%\bin.v2\libs\regex\build\msvc-12.0_xp\release\%BUILDTARGETPATH%link-static\runtime-link-static\threading-multi\libboost_regex-vc120-mt-s-%BOOSTVERSION%.lib (
+	SET MSVCTOOLSET=msvc-12.0_xp
 )
 
 :: VS2013
@@ -162,6 +174,21 @@ ECHO Run buildboost.bat without parameters to see the usage.
 
 
 :TOOLSETKNOWN
+
+:: VS2015-XP
+IF [%MSVCTOOLSET%]==[msvc-14.0_xp] (
+	SET BOOSTLIBPATH=%BOOSTPATH%\bin.v2\libs\regex\build\msvc-14.0_xp
+)
+
+:: VS2015
+IF [%MSVCTOOLSET%]==[msvc-14.0] (
+	SET BOOSTLIBPATH=%BOOSTPATH%\bin.v2\libs\regex\build\msvc-14.0
+)
+
+:: VS2013-XP
+IF [%MSVCTOOLSET%]==[msvc-12.0_xp] (
+	SET BOOSTLIBPATH=%BOOSTPATH%\bin.v2\libs\regex\build\msvc-12.0_xp
+)
 
 :: VS2013
 IF [%MSVCTOOLSET%]==[msvc-12.0] (
@@ -247,6 +274,9 @@ ECHO   --toolset msvc-9.0     for Visual Studio 2008
 ECHO   --toolset msvc-10.0    for Visual Studio 2010
 ECHO   --toolset msvc-11.0    for Visual Studio 2012
 ECHO   --toolset msvc-12.0    for Visual Studio 2013
+ECHO   --toolset msvc-12.0_xp for Visual Studio 2013 XP
+ECHO   --toolset msvc-14.0    for Visual Studio 2015
+ECHO   --toolset msvc-14.0_xp for Visual Studio 2015 XP
 ECHO.
 ECHO.
 ECHO e.g.  To build with boost in d:\libs\boost_1_55_0 with Visual Studio 2008

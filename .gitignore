@@ -76,9 +76,9 @@ PowerEditor/installer/zipped.package.release/
 PowerEditor/installer/zipped.package.release64/
 PowerEditor/visual.net/Unicode Debug/
 PowerEditor/visual.net/Unicode Release/
-PowerEditor/visual.net/notepadPlus.sln
 PowerEditor/visual.net/x64/Unicode Debug/
 PowerEditor/visual.net/x64/Unicode Release/
+PowerEditor/visual.net/notepadPlus.vs2015.VC.db
 
 # scintilla - generated files
 scintilla/bin/SciLexer.*
