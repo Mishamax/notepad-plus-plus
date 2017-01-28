@@ -79,6 +79,18 @@ void parseCommandLine(TCHAR * commandLine, ParamVector & paramVector) {
 	while(commandLine[0] == TEXT(' '))
 		++commandLine;
 
+	// Skip first argument if '-z' (notepad replacement) is given
+	if (commandLine[0] == TEXT('-') && commandLine[1] == TEXT('z'))
+	{
+		commandLine += 2;
+		while (commandLine[0] == TEXT(' '))
+			commandLine++;
+		while (commandLine[0] != TEXT(' '))
+			commandLine++;
+		while (commandLine[0] == TEXT(' '))
+			commandLine++;
+	}
+
 	bool isFile = checkSingleFile(commandLine);	//if the commandline specifies only a file, open it as such
 	if (isFile) {
 		paramVector.push_back(commandLine);

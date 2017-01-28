@@ -56,6 +56,7 @@ notepad++ [--help] [-multiInst] [-noPlugin] [-lLanguage] [-LlangCode] [-nLineNum
     -qt : Launch ghost typing to display a text via the given text\r\
     -qf : Launch ghost typing to display a file content via the file path\r\
     filePath : file or folder name to open (absolute or relative path name)\r\
+    -z : Launch Notepad++ in Notepad replacement mode\r\
 ");
 
 
