@@ -6,8 +6,6 @@ set /p DISTR="Enter distribution folder: "
 set DISTR=%DISTR%\Notepad++
 if not exist "%DISTR%" mkdir "%DISTR%"
 
-copy "..\scintilla\bin\SciLexer.dll" "bin"
-
 pushd bin
 copy "allowAppDataPlugins.xml" "%DISTR%"
 copy "change.log"              "%DISTR%"

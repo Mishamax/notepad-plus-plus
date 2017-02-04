@@ -23,6 +23,7 @@ ipch/
 *.opensdf
 *.sdf
 *.cachefile
+*.VC.db
 
 #-- Backup & report files from converting an old project file to a newer
 #   Visual Studio version. Backup files are not needed, because we have git ;-)
@@ -78,7 +79,6 @@ PowerEditor/visual.net/Unicode Debug/
 PowerEditor/visual.net/Unicode Release/
 PowerEditor/visual.net/x64/Unicode Debug/
 PowerEditor/visual.net/x64/Unicode Release/
-PowerEditor/visual.net/notepadPlus.vs2015.VC.db
 
 # scintilla - generated files
 scintilla/bin/SciLexer.*
@@ -86,6 +86,10 @@ scintilla/bin/Scintilla.*
 scintilla/win32/*.lib
 scintilla/win32/Lexers.a
 scintilla/win32/ScintRes.res
+scintilla/win32/Unicode Debug/
+scintilla/win32/Unicode Release/
+scintilla/win32/x64/Unicode Debug/
+scintilla/win32/x64/Unicode Release/
 scintilla/boostregex/bin
 scintilla/boostregex/boostpath.mak
 
