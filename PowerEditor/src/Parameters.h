@@ -728,7 +728,7 @@ struct NppGUI final
 	int _userDefineDlgStatus = UDD_DOCKED;
 
 	int _tabSize = 4;
-	bool _tabReplacedBySpace = false;
+	bool _tabReplacedBySpace = true;
 
 	ChangeDetect _fileAutoDetection = cdEnabled;
 	ChangeDetect _fileAutoDetectionOriginalValue = cdEnabled;
@@ -736,12 +736,12 @@ struct NppGUI final
 
 	RECT _appPos;
 
-	bool _isMaximized = false;
+	bool _isMaximized = true;
 	bool _isMinimizedToTray = false;
-	bool _rememberLastSession = true; // remember next session boolean will be written in the settings
+	bool _rememberLastSession = false; // remember next session boolean will be written in the settings
 	bool _isCmdlineNosessionActivated = false; // used for if -nosession is indicated on the launch time
 	bool _detectEncoding = true;
-	bool _doTaskList = true;
+	bool _doTaskList = false;
 	bool _maitainIndent = true;
 	bool _enableSmartHilite = true;
 
@@ -754,7 +754,7 @@ struct NppGUI final
 	bool _enableTagsMatchHilite = true;
 	bool _enableTagAttrsHilite = true;
 	bool _enableHiliteNonHTMLZone = false;
-	bool _styleMRU = true;
+	bool _styleMRU = false;
 	char _leftmostDelimiter = '(';
 	char _rightmostDelimiter = ')';
 	bool _delimiterSelectionOnEntireDocument = false;
@@ -767,7 +767,7 @@ struct NppGUI final
 	// 0 : do nothing
 	// 1 : don't draw underline
 	// 2 : draw underline
-	int _styleURL = 0;
+	int _styleURL = 2;
 
 	NewDocDefaultSettings _newDocDefaultSettings;
 
@@ -784,7 +784,7 @@ struct NppGUI final
 	DockingManagerData _dockingData;
 	GlobalOverride _globalOverride;
 	enum AutocStatus{autoc_none, autoc_func, autoc_word, autoc_both};
-	AutocStatus _autocStatus = autoc_both;
+	AutocStatus _autocStatus = autoc_none;
 	size_t  _autocFromLen = 1;
 	bool _autocIgnoreNumbers = true;
 	bool _funcParams = false;
@@ -795,7 +795,7 @@ struct NppGUI final
 
 	struct AutoUpdateOptions
 	{
-		bool _doAutoUpdate = true;
+		bool _doAutoUpdate = false;
 		int _intervalDays = 15;
 		Date _nextUpdateDate;
 		AutoUpdateOptions(): _nextUpdateDate(Date()) {};
@@ -833,15 +833,15 @@ struct NppGUI final
 struct ScintillaViewParams
 {
 	bool _lineNumberMarginShow = true;
-	bool _bookMarkMarginShow = true;
-	folderStyle  _folderStyle = FOLDER_STYLE_BOX; //"simple", "arrow", "circle", "box" and "none"
+	bool _bookMarkMarginShow = false;
+	folderStyle  _folderStyle = FOLDER_STYLE_NONE; //"simple", "arrow", "circle", "box" and "none"
 	lineWrapMethod _lineWrapMethod = LINEWRAP_ALIGNED;
-	bool _foldMarginShow = true;
+	bool _foldMarginShow = false;
 	bool _indentGuideLineShow = true;
 	bool _currentLineHilitingShow = true;
 	bool _wrapSymbolShow = false;
 	bool _doWrap = false;
-	int _edgeMode = EDGE_NONE;
+	int _edgeMode = EDGE_LINE;
 	int _edgeNbColumn = 80;
 	int _zoom = 0;
 	int _zoom2 = 0;
@@ -1585,7 +1585,7 @@ private:
 	// Recent File History
 	generic_string *_LRFileList[NB_MAX_LRF_FILE];
 	int _nbRecentFile = 0;
-	int _nbMaxRecentFile = 10;
+	int _nbMaxRecentFile = 5;
 	bool _putRecentFileInSubMenu = false;
 	int _recentFileCustomLength = RECENTFILES_SHOWFULLPATH;	//	<0: Full File Path Name
 															//	=0: Only File Name
