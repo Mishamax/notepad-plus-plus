@@ -2495,8 +2495,8 @@ void Notepad_plus::maintainIndentation(TCHAR ch)
 			(eolMode == SC_EOL_CR && ch == '\r'))
 		{
 			// Search the non-empty previous line
-			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
-				prevLine--;
+			//while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+			//	prevLine--;
 
 			// Get previous line's Indent
 			if (prevLine >= 0)
@@ -2623,8 +2623,8 @@ void Notepad_plus::maintainIndentation(TCHAR ch)
 			(eolMode == SC_EOL_CR && ch == '\r'))
 		{
 			// Search the non-empty previous line
-			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
-				prevLine--;
+			//while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+			//	prevLine--;
 
 			if (prevLine >= 0)
 			{
