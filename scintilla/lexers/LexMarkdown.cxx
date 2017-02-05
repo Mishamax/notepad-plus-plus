@@ -243,6 +243,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             }
         }
         // Emphasis
+		/*
         else if (sc.state == SCE_MARKDOWN_EM1) {
             if (sc.ch == '*' && sc.chPrev != ' ')
                 sc.ForwardSetState(SCE_MARKDOWN_DEFAULT);
@@ -251,6 +252,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             if (sc.ch == '_' && sc.chPrev != ' ')
                 sc.ForwardSetState(SCE_MARKDOWN_DEFAULT);
         }
+		*/
         else if (sc.state == SCE_MARKDOWN_CODEBK) {
             if (sc.atLineStart && sc.Match("~~~")) {
                 int i = 1;
@@ -430,12 +432,14 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                 sc.Forward();
             }
             // Emphasis
+			/*
             else if (sc.ch == '*' && sc.chNext != ' ' && AtTermStart(sc)) {
                 sc.SetState(SCE_MARKDOWN_EM1);
             }
             else if (sc.ch == '_' && sc.chNext != ' ' && AtTermStart(sc)) {
                 sc.SetState(SCE_MARKDOWN_EM2);
             }
+			*/
             // Strikeout
             else if (sc.Match("~~") && sc.GetRelative(2) != ' ' && AtTermStart(sc)) {
                 sc.SetState(SCE_MARKDOWN_STRIKEOUT);
