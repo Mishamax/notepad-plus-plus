@@ -79,7 +79,8 @@ static bool FollowToLineEnd(const int ch, const int state, const unsigned int en
 // Does the previous line have more than spaces and tabs?
 static bool HasPrevLineContent(StyleContext &sc) {
     int i = 0;
-    // Go back to the previous newline
+
+	// Go back to the previous newline
     while ((--i + (int)sc.currentPos) >= 0 && !IsNewline(sc.GetRelative(i)))
         ;
 
@@ -96,6 +97,25 @@ static bool HasPrevLineContent(StyleContext &sc) {
             return true;
     }
     return false;
+}
+
+// Returns true if the previous line contains only newline characters
+static bool IsPrevLineEmpty(StyleContext &sc) {
+	int i = 0;
+
+	// Go back to the previous newline
+	while ((--i + (int)sc.currentPos) >= 0 && !IsNewline(sc.GetRelative(i)))
+		;
+
+	// Skip newline characters
+	int ch = sc.GetRelative(i);
+	int prevCh = sc.GetRelative(i - 1);
+	if (prevCh == '\r' && ch == '\n')
+		i -= 2;
+	else if (ch == '\r' || ch == '\n')
+		i -= 1;
+
+	return IsNewline(sc.GetRelative(i)) || (int)sc.currentPos + i <= 0;
 }
 
 static bool AtTermStart(StyleContext &sc) {
@@ -178,7 +198,9 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
 		length += startPos - newStartPos;
 		startPos = newStartPos;
 		styler.StartAt(startPos);
+		initStyle = styler.StyleAt(startPos);
 	}
+
 
     StyleContext sc(startPos, length, initStyle, styler);
 
@@ -195,8 +217,8 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
 
         // Conditional state-based actions
         if (sc.state == SCE_MARKDOWN_CODE2) {
-            if (sc.Match("``") && sc.GetRelative(-2) != ' ') {
-                sc.Forward(2);
+            if (sc.Match("```")) {
+                sc.Forward(3);
                 sc.SetState(SCE_MARKDOWN_DEFAULT);
             }
         }
@@ -204,31 +226,18 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             if (sc.ch == '`' && sc.chPrev != ' ')
                 sc.ForwardSetState(SCE_MARKDOWN_DEFAULT);
         }
-        /* De-activated because it gets in the way of other valid indentation
-         * schemes, for example multiple paragraphs inside a list item.
         // Code block
         else if (sc.state == SCE_MARKDOWN_CODEBK) {
             bool d = true;
-            if (IsNewline(sc.ch)) {
-                if (sc.chNext != '\t') {
-                    for (int c = 1; c < 5; ++c) {
-                        if (sc.GetRelative(c) != ' ')
-                            d = false;
-                    }
-                }
-            }
-            else if (sc.atLineStart) {
-                if (sc.ch != '\t' ) {
-                    for (int i = 0; i < 4; ++i) {
-                        if (sc.GetRelative(i) != ' ')
-                            d = false;
-                    }
-                }
-            }
+			if (sc.atLineStart && sc.ch != '\t') {
+				for (int i = 0; i < 4; ++i) {
+					if (sc.GetRelative(i) != ' ')
+						d = false;
+				}
+			}
             if (!d)
                 sc.SetState(SCE_MARKDOWN_LINE_BEGIN);
         }
-        */
         // Strong
         else if (sc.state == SCE_MARKDOWN_STRONG1) {
             if (sc.Match("**") && sc.chPrev != ' ') {
@@ -281,13 +290,15 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             else if (sc.Match("##"))
 				sc.SetState(SCE_MARKDOWN_HEADER2);
             else if (sc.Match("#")) {
+				/*
                 // Catch the special case of an unordered list
                 if (sc.chNext == '.' && IsASpaceOrTab(sc.GetRelative(2))) {
                     precharCount = 0;
                     sc.SetState(SCE_MARKDOWN_PRECHAR);
                 }
                 else
-					sc.SetState(SCE_MARKDOWN_HEADER1);
+				*/
+				sc.SetState(SCE_MARKDOWN_HEADER1);
             }
             // Code block
             else if (sc.Match("~~~")) {
@@ -337,15 +348,14 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             // Blockquote
             if (sc.ch == '>' && precharCount < 5)
                 sc.SetState(SCE_MARKDOWN_BLOCKQUOTE);
-            /*
             // Begin of code block
-            else if (!HasPrevLineContent(sc) && (sc.chPrev == '\t' || precharCount >= 4))
+            else if (IsPrevLineEmpty(sc) && (sc.chPrev == '\t' || precharCount >= 4))
                 sc.SetState(SCE_MARKDOWN_CODEBK);
-            */
             // HRule - Total of three or more hyphens, asterisks, or underscores
             // on a line by themselves
             else if ((sc.ch == '-' || sc.ch == '*' || sc.ch == '_') && IsValidHrule(endPos, sc))
                 ;
+			/*
             // Unordered list
             else if ((sc.ch == '-' || sc.ch == '*' || sc.ch == '+') && IsASpaceOrTab(sc.chNext)) {
                 sc.SetState(SCE_MARKDOWN_ULIST_ITEM);
@@ -369,7 +379,8 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                 sc.Forward(2);
                 sc.SetState(SCE_MARKDOWN_DEFAULT);
             }
-            else if (sc.ch != ' ' || precharCount > 2)
+			*/
+            else if (sc.ch != ' ')
                 sc.SetState(SCE_MARKDOWN_DEFAULT);
             else
                 ++precharCount;
@@ -415,7 +426,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                 }
             }
             // Code - also a special case for alternate inside spacing
-            if (sc.Match("``") && sc.GetRelative(3) != ' ' && AtTermStart(sc)) {
+            if (sc.Match("```") && AtTermStart(sc)) {
                 sc.SetState(SCE_MARKDOWN_CODE2);
                 sc.Forward();
             }
