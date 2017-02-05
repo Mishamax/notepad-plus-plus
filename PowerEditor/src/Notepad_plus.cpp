@@ -2803,6 +2803,9 @@ enum LangType Notepad_plus::menuID2LangType(int cmdID)
 		case IDM_LANG_COFFEESCRIPT :
             return L_COFFEESCRIPT;
 
+		case IDM_LANG_MARKDOWN :
+			return L_MARKDOWN;
+
 		case IDM_LANG_USER :
             return L_USER;
 		default: {

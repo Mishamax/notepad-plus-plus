@@ -867,6 +867,10 @@ protected:
 		setLexer(SCLEX_COFFEESCRIPT, L_COFFEESCRIPT, LIST_0 | LIST_1 | LIST_2  | LIST_3);
 	};
 
+	void setMarkdownLexer() {
+		setLexer(SCLEX_MARKDOWN, L_MARKDOWN, LIST_NONE);
+	};
+
     //--------------------
 
 	void setSearchResultLexer() {
@@ -888,6 +892,7 @@ protected:
 			case L_SMALLTALK:
 			case L_KIX:
 			case L_ADA:
+			case L_MARKDOWN:
 				return false;
 			default:
 				return true;

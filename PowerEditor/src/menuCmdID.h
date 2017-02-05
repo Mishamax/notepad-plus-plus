@@ -483,6 +483,8 @@
 	#define    IDM_LANG_JSON		       (IDM_LANG + 57)
     #define    IDM_LANG_FORTRAN_77         (IDM_LANG + 58)
 
+    #define    IDM_LANG_MARKDOWN           (IDM_LANG + 64)
+
     #define    IDM_LANG_EXTERNAL           (IDM_LANG + 65)
     #define    IDM_LANG_EXTERNAL_LIMIT     (IDM_LANG + 79)
 

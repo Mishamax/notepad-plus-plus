@@ -700,6 +700,7 @@ BEGIN
         MENUITEM "LISP",                    IDM_LANG_LISP
         MENUITEM "Lua",                     IDM_LANG_LUA
         MENUITEM "Makefile",                IDM_LANG_MAKEFILE
+        MENUITEM "Markdown",                IDM_LANG_MARKDOWN
         MENUITEM "Matlab",                  IDM_LANG_MATLAB
         MENUITEM "MS-DOS Style",            IDM_LANG_ASCII
         MENUITEM "Normal Text",             IDM_LANG_TEXT
@@ -790,6 +791,7 @@ BEGIN
      POPUP "M"
     BEGIN
         MENUITEM "Makefile",              IDM_LANG_MAKEFILE
+        MENUITEM "Markdown",              IDM_LANG_MARKDOWN
         MENUITEM "Matlab",                IDM_LANG_MATLAB
         MENUITEM "MS-DOS Style",          IDM_LANG_ASCII
     END
