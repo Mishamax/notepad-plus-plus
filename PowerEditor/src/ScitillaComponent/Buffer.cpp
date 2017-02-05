@@ -207,7 +207,8 @@ void Buffer::setFileName(const TCHAR *fn, LangType defaultLang)
 
 	if (newLang == defaultLang || newLang == L_TEXT)	//language can probably be refined
 	{
-		if ((!generic_stricmp(_fileName, TEXT("makefile"))) || (!generic_stricmp(_fileName, TEXT("GNUmakefile"))))
+		if ((!generic_stricmp(_fileName, TEXT("makefile"))) || (!generic_stricmp(_fileName, TEXT("GNUmakefile"))) ||
+			(!generic_stricmp(_fileName, TEXT("makefile.debug"))) || (!generic_stricmp(_fileName, TEXT("makefile.release"))))
 			newLang = L_MAKEFILE;
 		else if (!generic_stricmp(_fileName, TEXT("CmakeLists.txt")))
 			newLang = L_CMAKE;

@@ -722,7 +722,7 @@ struct NppGUI final
 	// 6th bit : enable multiline
 
 	// 0:don't draw; 1:draw top bar 2:draw inactive tabs 3:draw both 7:draw both+drag&drop
-	int _tabStatus = (TAB_DRAWTOPBAR | TAB_DRAWINACTIVETAB | TAB_DRAGNDROP | TAB_REDUCE | TAB_CLOSEBUTTON);
+	int _tabStatus = (TAB_DRAWTOPBAR | TAB_DRAWINACTIVETAB | TAB_DRAGNDROP | TAB_REDUCE | TAB_CLOSEBUTTON | TAB_DBCLK2CLOSE);
 
 	bool _splitterPos = POS_VERTICAL;
 	int _userDefineDlgStatus = UDD_DOCKED;
@@ -753,7 +753,7 @@ struct NppGUI final
 	bool _disableSmartHiliteTmp = false;
 	bool _enableTagsMatchHilite = true;
 	bool _enableTagAttrsHilite = true;
-	bool _enableHiliteNonHTMLZone = false;
+	bool _enableHiliteNonHTMLZone = true;
 	bool _styleMRU = false;
 	char _leftmostDelimiter = '(';
 	char _rightmostDelimiter = ')';
