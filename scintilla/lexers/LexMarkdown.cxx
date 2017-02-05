@@ -395,6 +395,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                 freezeCursor = true;
             }
             // Links and Images
+			/*
             if (sc.Match("![") || sc.ch == '[') {
                 int i = 0, j = 0, k = 0;
                 int len = endPos - sc.currentPos;
@@ -425,6 +426,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                     sc.ForwardSetState(SCE_MARKDOWN_DEFAULT);
                 }
             }
+			*/
             // Code - also a special case for alternate inside spacing
             if (sc.Match("```") && AtTermStart(sc)) {
                 sc.SetState(SCE_MARKDOWN_CODE2);

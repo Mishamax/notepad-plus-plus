@@ -511,7 +511,6 @@
             <WordsStyle name="BLOCKQUOTE" styleID="15" fgColor="A31515" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
             <WordsStyle name="STRIKEOUT" styleID="16" fgColor="808080" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
             <WordsStyle name="HRULE" styleID="17" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
-            <WordsStyle name="LINK" styleID="18" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
             <WordsStyle name="CODE" styleID="19" fgColor="A31515" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
             <WordsStyle name="CODE2" styleID="20" fgColor="A31515" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
             <WordsStyle name="CODEBK" styleID="21" fgColor="A31515" bgColor="FFFFFF" fontName="" fontStyle="0" fontSize="" />
