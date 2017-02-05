@@ -76,35 +76,20 @@ static bool FollowToLineEnd(const int ch, const int state, const unsigned int en
     else return false;
 }
 
-// Set the state on text section from current to length characters,
-// then set the rest until the newline to default, except for any characters matching token
-static void SetStateAndZoom(const int state, const int length, const int token, StyleContext &sc) {
-    sc.SetState(state);
-    sc.Forward(length);
-    sc.SetState(SCE_MARKDOWN_DEFAULT);
-    sc.Forward();
-    bool started = false;
-    while (sc.More() && !IsNewline(sc.ch)) {
-        if (sc.ch == token && !started) {
-            sc.SetState(state);
-            started = true;
-        }
-        else if (sc.ch != token) {
-            sc.SetState(SCE_MARKDOWN_DEFAULT);
-            started = false;
-        }
-        sc.Forward();
-    }
-    sc.SetState(SCE_MARKDOWN_LINE_BEGIN);
-}
-
 // Does the previous line have more than spaces and tabs?
 static bool HasPrevLineContent(StyleContext &sc) {
     int i = 0;
     // Go back to the previous newline
     while ((--i + (int)sc.currentPos) >= 0 && !IsNewline(sc.GetRelative(i)))
         ;
-    while ((--i + (int)sc.currentPos) >= 0) {
+
+	// Skip newline characters
+	int ch = sc.GetRelative(i);
+	int prevCh = sc.GetRelative(i - 1);
+	if (prevCh == '\r' && ch == '\n')
+		--i;
+
+	while ((--i + (int)sc.currentPos) >= 0) {
         if (IsNewline(sc.GetRelative(i)))
             break;
         if (!IsASpaceOrTab(sc.GetRelative(i)))
@@ -143,6 +128,41 @@ static bool IsValidHrule(const unsigned int endPos, StyleContext &sc) {
     }
 }
 
+// Check if we are at the beginning of the first line of a header underlined with '=' or '-'
+static bool IsUnderlinedHeader(const int hdrCh, const unsigned int endPos, StyleContext &sc) {
+	unsigned int i = 0;
+
+	// Go to the end of the first line and check if it has any content (non-whitespace characters)
+	int ch;
+	bool firstLineHasContent = false;
+	while (sc.currentPos + i < endPos && !IsNewline(ch = sc.GetRelative(i))) {
+		if (!IsASpaceOrTab(ch))
+			firstLineHasContent = true;
+		++i;
+	}
+
+	ch = sc.GetRelative(i);
+	if (!firstLineHasContent || !IsNewline(ch))
+		return false;
+
+	// Skip newline characters
+	int nextCh = sc.GetRelative(i + 1);
+	i += (ch == '\r' && nextCh == '\n') ? 2 : 1;
+
+	// Check if the second line starts with '=' or '-' characters and skip them
+	if (sc.GetRelative(i) != hdrCh)
+		return false;
+	while (sc.currentPos + i < endPos && sc.GetRelative(i) == hdrCh)
+		++i;
+
+	// Skip whitespace
+	while (sc.currentPos + i < endPos && IsASpaceOrTab(sc.GetRelative(i)))
+		++i;
+
+	// Check if we are at the end of line
+	return IsNewline(sc.GetRelative(i)) || sc.currentPos + i == endPos;
+}
+
 static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle,
                                WordList **, Accessor &styler) {
     unsigned int endPos = startPos + length;
@@ -151,6 +171,14 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
     // Useful in the corner case of having to start at the beginning file position
     // in the default state.
     bool freezeCursor = false;
+
+	// Start from the previous line in order to get headers underlined with '=' or '-' to work
+	if (startPos > 0) {
+		unsigned int newStartPos = styler.LineStart(styler.GetLine(startPos) - 1);
+		length += startPos - newStartPos;
+		startPos = newStartPos;
+		styler.StartAt(startPos);
+	}
 
     StyleContext sc(startPos, length, initStyle, styler);
 
@@ -239,17 +267,17 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             }
         }
         else if (sc.state == SCE_MARKDOWN_LINE_BEGIN) {
-            // Header
-            if (sc.Match("######"))
-                SetStateAndZoom(SCE_MARKDOWN_HEADER6, 6, '#', sc);
+            // Header starting with '#'
+			if (sc.Match("######"))
+				sc.SetState(SCE_MARKDOWN_HEADER6);
             else if (sc.Match("#####"))
-                SetStateAndZoom(SCE_MARKDOWN_HEADER5, 5, '#', sc);
+				sc.SetState(SCE_MARKDOWN_HEADER5);
             else if (sc.Match("####"))
-                SetStateAndZoom(SCE_MARKDOWN_HEADER4, 4, '#', sc);
+				sc.SetState(SCE_MARKDOWN_HEADER4);
             else if (sc.Match("###"))
-                SetStateAndZoom(SCE_MARKDOWN_HEADER3, 3, '#', sc);
+				sc.SetState(SCE_MARKDOWN_HEADER3);
             else if (sc.Match("##"))
-                SetStateAndZoom(SCE_MARKDOWN_HEADER2, 2, '#', sc);
+				sc.SetState(SCE_MARKDOWN_HEADER2);
             else if (sc.Match("#")) {
                 // Catch the special case of an unordered list
                 if (sc.chNext == '.' && IsASpaceOrTab(sc.GetRelative(2))) {
@@ -257,7 +285,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                     sc.SetState(SCE_MARKDOWN_PRECHAR);
                 }
                 else
-                    SetStateAndZoom(SCE_MARKDOWN_HEADER1, 1, '#', sc);
+					sc.SetState(SCE_MARKDOWN_HEADER1);
             }
             // Code block
             else if (sc.Match("~~~")) {
@@ -266,14 +294,20 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                 else
                     sc.SetState(SCE_MARKDOWN_DEFAULT);
             }
+			// Header underlined with '='
+			else if (IsUnderlinedHeader('=', endPos, sc))
+				sc.SetState(SCE_MARKDOWN_HEADER1);
             else if (sc.ch == '=') {
                 if (HasPrevLineContent(sc) && FollowToLineEnd('=', SCE_MARKDOWN_HEADER1, endPos, sc))
-                    ;
+					;
                 else
                     sc.SetState(SCE_MARKDOWN_DEFAULT);
             }
-            else if (sc.ch == '-') {
-                if (HasPrevLineContent(sc) && FollowToLineEnd('-', SCE_MARKDOWN_HEADER2, endPos, sc))
+			// Header underlined with '-'
+			else if (IsUnderlinedHeader('-', endPos, sc))
+				sc.SetState(SCE_MARKDOWN_HEADER2);
+			else if (sc.ch == '-') {
+				if (HasPrevLineContent(sc) && FollowToLineEnd('-', SCE_MARKDOWN_HEADER2, endPos, sc))
                     ;
                 else {
                     precharCount = 0;
@@ -341,7 +375,9 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
 
         // New state anywhere in doc
         if (sc.state == SCE_MARKDOWN_DEFAULT) {
-            if (sc.atLineStart && sc.ch == '#') {
+            if (sc.atLineStart && (sc.ch == '#' ||
+								   IsUnderlinedHeader('=', endPos, sc) ||
+								   IsUnderlinedHeader('-', endPos, sc))) {
                 sc.SetState(SCE_MARKDOWN_LINE_BEGIN);
                 freezeCursor = true;
             }
