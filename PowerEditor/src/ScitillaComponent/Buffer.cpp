@@ -1432,7 +1432,7 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 		do
 		{
 			lenFile = fread(data+incompleteMultibyteChar, 1, blockSize-incompleteMultibyteChar, fp) + incompleteMultibyteChar;
-			if (lenFile == 0) break;
+			if (lenFile == 0 && !isFirstTime) break;
 
             if (isFirstTime)
             {
