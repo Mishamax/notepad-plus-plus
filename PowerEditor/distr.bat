@@ -19,5 +19,5 @@ copy "readme.txt"              "%DISTR%"
 copy "SciLexer.dll"            "%DISTR%"
 copy "shortcuts.xml"           "%DISTR%"
 copy "stylers.model.xml"       "%DISTR%"
+copy "userDefineLang.xml"      "%DISTR%"
 popd
-

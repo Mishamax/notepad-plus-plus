@@ -212,6 +212,7 @@ copy ..\src\stylers.model.xml ..\bin\stylers.model.xml
 copy ..\src\shortcuts.xml ..\bin\shortcuts.xml
 copy ..\src\functionList.xml ..\bin\functionList.xml
 copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
+copy ..\src\userDefineLang.xml ..\bin\userDefineLang.xml
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -262,6 +263,7 @@ copy ..\src\stylers.model.xml ..\bin64\stylers.model.xml
 copy ..\src\shortcuts.xml ..\bin64\shortcuts.xml
 copy ..\src\functionList.xml ..\bin64\functionList.xml
 copy ..\src\contextMenu.xml ..\bin64\contextMenu.xml
+copy ..\src\userDefineLang.xml ..\bin64\userDefineLang.xml
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
