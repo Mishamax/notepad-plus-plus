@@ -139,6 +139,7 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 {TEXT("json"),			TEXT("json"),				TEXT("JSON file"),										L_JSON,			SCLEX_CPP },
 {TEXT("javascript.js"), TEXT("JavaScript"),			TEXT("JavaScript file"),								L_JAVASCRIPT,	SCLEX_CPP },
 {TEXT("fortran77"),		TEXT("Fortran fixed form"),	TEXT("Fortran fixed form source file"),					L_FORTRAN_77,	SCLEX_F77},
+{TEXT("baanc"),			TEXT("BaanC"),				TEXT("BaanC File"),										L_BAANC,		SCLEX_BAAN },
 {TEXT("markdown"),		TEXT("Markdown"),			TEXT("Markdown file"),									L_MARKDOWN,		SCLEX_MARKDOWN },
 {TEXT("ext"),			TEXT("External"),			TEXT("External"),										L_EXTERNAL,		SCLEX_NULL}
 };
@@ -1511,6 +1512,9 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 		case L_MARKDOWN :
 			setMarkdownLexer(); break;
 
+		case L_BAANC:
+			setBaanCLexer(); break;
+
 		case L_TEXT :
 		default :
 			if (typeDoc >= L_EXTERNAL && typeDoc < _pParameter->L_END)
@@ -1678,8 +1682,8 @@ void ScintillaEditView::activateBuffer(BufferID buffer)
 
 void ScintillaEditView::getCurrentFoldStates(std::vector<size_t> & lineStateVector)
 {
-	//-- FLS: xCodeOptimization1304: For active document get folding state from Scintilla.
-	//--      The code using SCI_CONTRACTEDFOLDNEXT is usually 10%-50% faster than checking each line of the document!!
+	// xCodeOptimization1304: For active document get folding state from Scintilla.
+	// The code using SCI_CONTRACTEDFOLDNEXT is usually 10%-50% faster than checking each line of the document!!
 	size_t contractedFoldHeaderLine = 0;
 
 	do {
@@ -2765,6 +2769,11 @@ void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, int initial, int in
 {
 	assert(repeat > 0);
 
+	// If there is no column mode info available, no need to do anything
+	// If required a message can be shown to user, that select column properly or something similar
+	// It is just a double check as taken in callee method (in case this method is called from multiple places)
+	if (cmi.size() <= 0)
+		return;
 	// 0000 00 00 : Dec BASE_10
 	// 0000 00 01 : Hex BASE_16
 	// 0000 00 10 : Oct BASE_08

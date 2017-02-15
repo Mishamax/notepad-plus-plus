@@ -482,6 +482,7 @@
 	#define    IDM_LANG_COFFEESCRIPT       (IDM_LANG + 56)
 	#define    IDM_LANG_JSON		       (IDM_LANG + 57)
     #define    IDM_LANG_FORTRAN_77         (IDM_LANG + 58)
+	#define    IDM_LANG_BAANC              (IDM_LANG + 59)
 
     #define    IDM_LANG_MARKDOWN           (IDM_LANG + 64)
 

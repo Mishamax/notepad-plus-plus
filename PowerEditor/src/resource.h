@@ -27,12 +27,12 @@
 
 #pragma once
 
-#define NOTEPAD_PLUS_VERSION TEXT("Notepad++ v7.3.1")
+#define NOTEPAD_PLUS_VERSION TEXT("Notepad++ v7.3.2")
 
 // should be X.Y : ie. if VERSION_DIGITALVALUE == 4, 7, 1, 0 , then X = 4, Y = 71
 // ex : #define VERSION_VALUE TEXT("5.63\0")
-#define VERSION_VALUE TEXT("7.31\0")
-#define VERSION_DIGITALVALUE 7, 3, 1, 0
+#define VERSION_VALUE TEXT("7.32\0")
+#define VERSION_DIGITALVALUE 7, 3, 2, 0
 
 
 
@@ -361,6 +361,9 @@
 
 // See shortcutRc.h
 //#define IDD_SHORTCUT_DLG      5000
+
+// See pluginsAdminRes.h
+//#define IDD_PLUGINSADMIN_DLG 5500
 
 // See preference.rc
 //#define IDD_PREFERENCE_BOX 6000

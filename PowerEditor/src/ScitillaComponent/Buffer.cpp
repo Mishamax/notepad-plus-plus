@@ -214,7 +214,7 @@ void Buffer::setFileName(const TCHAR *fn, LangType defaultLang)
 			newLang = L_CMAKE;
 		else if ((!generic_stricmp(_fileName, TEXT("SConstruct"))) || (!generic_stricmp(_fileName, TEXT("SConscript"))) || (!generic_stricmp(_fileName, TEXT("wscript"))))
 			newLang = L_PYTHON;
-		else if (!generic_stricmp(_fileName, TEXT("Rakefile")))
+		else if ((!generic_stricmp(_fileName, TEXT("Rakefile"))) || (!generic_stricmp(_fileName, TEXT("Vagrantfile"))))
 			newLang = L_RUBY;
 	}
 
