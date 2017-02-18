@@ -786,7 +786,7 @@ struct NppGUI final
 	AutocStatus _autocStatus = autoc_none;
 	size_t  _autocFromLen = 1;
 	bool _autocIgnoreNumbers = true;
-	bool _funcParams = true;
+	bool _funcParams = false;
 	MatchedPairConf _matchedPairConf;
 
 	generic_string _definedSessionExt;
