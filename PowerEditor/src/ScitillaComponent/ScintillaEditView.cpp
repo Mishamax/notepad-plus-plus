@@ -180,8 +180,8 @@ HMODULE loadSciLexerDll()
 {
 	generic_string sciLexerPath = getSciLexerFullPathName(moduleFileName, 1024);
 
-	if (not isCertificateValidated(sciLexerPath, TEXT("Notepad++")))
-		return nullptr;
+//	if (not isCertificateValidated(sciLexerPath, TEXT("Notepad++")))
+//		return nullptr;
 	return ::LoadLibrary(sciLexerPath.c_str());
 }
 
