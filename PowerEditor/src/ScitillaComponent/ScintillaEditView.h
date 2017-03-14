@@ -130,6 +130,7 @@ const int MARK_HIDELINESUNDERLINE = 21;
 
 
 int getNbDigits(int aNum, int base);
+HMODULE loadSciLexerDll();
 
 TCHAR * int2str(TCHAR *str, int strLen, int number, int base, int nbChiffre, bool isZeroLeading);
 
@@ -877,6 +878,18 @@ protected:
 	void setBaanCLexer() {
 		setLexer(SCLEX_BAAN, L_BAANC, LIST_0 | LIST_1);
 		execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("styling.within.preprocessor"), reinterpret_cast<LPARAM>("1"));
+	};
+
+	void setSrecLexer() {
+		setLexer(SCLEX_SREC, L_SREC, LIST_NONE);
+	};
+
+	void setIHexLexer() {
+		setLexer(SCLEX_IHEX, L_IHEX, LIST_NONE);
+	};
+
+	void setTEHexLexer() {
+		setLexer(SCLEX_TEHEX, L_TEHEX, LIST_NONE);
 	};
 
 	void setMarkdownLexer() {

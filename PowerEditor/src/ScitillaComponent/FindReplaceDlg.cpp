@@ -32,6 +32,7 @@
 #include "Notepad_plus_msgs.h"
 #include "UniConversion.h"
 #include "LongRunningOperation.h"
+#include "localization.h"
 
 using namespace std;
 
@@ -235,6 +236,11 @@ FindReplaceDlg::~FindReplaceDlg()
 		_findersOfFinder.erase(_findersOfFinder.begin() + n);
 	}
 
+	if (_shiftTrickUpTip)
+		::DestroyWindow(_shiftTrickUpTip);
+	if (_shiftTrickDownTip)
+		::DestroyWindow(_shiftTrickDownTip);
+
 	delete[] _uniFileName;
 }
 
@@ -251,7 +257,7 @@ void FindReplaceDlg::create(int dialogID, bool isRTL)
 	RECT rect;
 	//::GetWindowRect(_hSelf, &rect);
 	getClientRect(rect);
-	_tab.init(_hInst, _hSelf, false, false, true);
+	_tab.init(_hInst, _hSelf, false, true);
 	int tabDpiDynamicalHeight = NppParameters::getInstance()->_dpiManager.scaleY(13);
 	_tab.setFont(TEXT("Tahoma"), tabDpiDynamicalHeight);
 	
@@ -697,6 +703,26 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 			 _findClosePos.left = p.x;
 			 _findClosePos.top = p.y + 10;
 
+			 NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+			 generic_string tip2show = pNativeSpeaker->getLocalizedStrFromID("shift-change-direction-tip");
+			 if (tip2show.empty())
+				 tip2show = TEXT("Use Shift+Enter to search in the opposite direction.");
+
+			 _shiftTrickUpTip = CreateToolTip(IDDIRECTIONUP, _hSelf, _hInst, const_cast<PTSTR>(tip2show.c_str()));
+			 _shiftTrickDownTip = CreateToolTip(IDDIRECTIONDOWN, _hSelf, _hInst, const_cast<PTSTR>(tip2show.c_str()));
+			 if (_shiftTrickUpTip && _shiftTrickDownTip)
+			 {
+				 SendMessage(_shiftTrickUpTip, TTM_ACTIVATE, TRUE, 0);
+				 SendMessage(_shiftTrickUpTip, TTM_SETMAXTIPWIDTH, 0, 200);
+				 // Make tip stay 15 seconds
+				 SendMessage(_shiftTrickUpTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM((15000), (0)));
+
+				 SendMessage(_shiftTrickDownTip, TTM_ACTIVATE, TRUE, 0);
+				 SendMessage(_shiftTrickDownTip, TTM_SETMAXTIPWIDTH, 0, 200);
+				 // Make tip stay 15 seconds
+				 SendMessage(_shiftTrickDownTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM((15000), (0)));
+			 }
+
 			return TRUE;
 		}
 
@@ -831,8 +857,20 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 					if (isMacroRecording)
 						saveInMacro(wParam, FR_OP_FIND);
 
+					bool direction_bak = _options._whichDirection;
+					// if shift-key is pressed, revert search direction
+					// if shift-key is not pressed, use the normal setting
+					SHORT shift = GetKeyState(VK_SHIFT);
+					if (shift & SHIFTED)
+					{
+						_options._whichDirection = !_options._whichDirection;
+					}
+
 					FindStatus findStatus = FSFound;
 					processFindNext(_options._str2Search.c_str(), _env, &findStatus);
+					// restore search direction which may have been overwritten because shift-key was pressed
+					_options._whichDirection = direction_bak;
+
 					if (findStatus == FSEndReached)
 						setStatusbarMessage(TEXT("Find: Found the 1st occurrence from the top. The end of the document has been reached."), FSEndReached);
 					else if (findStatus == FSTopReached)

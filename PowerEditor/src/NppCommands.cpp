@@ -2782,6 +2782,9 @@ void Notepad_plus::command(int id)
         case IDM_LANG_JSP :
 		case IDM_LANG_COFFEESCRIPT :
 		case IDM_LANG_BAANC:
+		case IDM_LANG_SREC:
+		case IDM_LANG_IHEX:
+		case IDM_LANG_TEHEX:
         case IDM_LANG_MARKDOWN :
 		case IDM_LANG_USER :
 		{
@@ -2803,17 +2806,19 @@ void Notepad_plus::command(int id)
 			if (nbDoc > 1)
 			{
 				bool direction = (id == IDC_NEXT_DOC)?dirDown:dirUp;
-
 				if (!doTaskList)
 				{
 					activateNextDoc(direction);
 				}
 				else
 				{
-					TaskListDlg tld;
-					HIMAGELIST hImgLst = _docTabIconList.getHandle();
-					tld.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), hImgLst, direction);
-					tld.doDialog();
+					if (TaskListDlg::_instanceCount == 0)
+					{
+						TaskListDlg tld;
+						HIMAGELIST hImgLst = _docTabIconList.getHandle();
+						tld.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), hImgLst, direction);
+						tld.doDialog();
+					}
 				}
 			}
 			_linkTriggered = true;

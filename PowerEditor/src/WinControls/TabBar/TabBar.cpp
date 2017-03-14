@@ -54,11 +54,11 @@ COLORREF TabBarPlus::_inactiveBgColour = RGB(192, 192, 192);
 HWND TabBarPlus::_hwndArray[nbCtrlMax] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 int TabBarPlus::_nbCtrl = 0;
 
-void TabBar::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isTraditional, bool isMultiLine)
+void TabBar::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isMultiLine)
 {
 	Window::init(hInst, parent);
 	int vertical = isVertical?(TCS_VERTICAL | TCS_MULTILINE | TCS_RIGHTJUSTIFY):0;
-	_isTraditional = isTraditional;
+
 	_isVertical = isVertical;
 	_isMultiLine = isMultiLine;
 
@@ -66,7 +66,7 @@ void TabBar::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isTraditio
 	icce.dwSize = sizeof(icce);
 	icce.dwICC = ICC_TAB_CLASSES;
 	InitCommonControlsEx(&icce);
-    int multiLine = isMultiLine?(_isTraditional?TCS_MULTILINE:0):0;
+	int multiLine = isMultiLine ? TCS_MULTILINE : 0;
 
 	int style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE |\
         TCS_FOCUSNEVER | TCS_TABS | WS_TABSTOP | vertical | multiLine;
@@ -200,8 +200,8 @@ void TabBar::setImageList(HIMAGELIST himl)
 
 void TabBar::reSizeTo(RECT & rc2Ajust)
 {
-	RECT RowRect;
-	int RowCount, TabsLength;
+	RECT rowRect;
+	int rowCount, tabsHight;
 
 	// Important to do that!
 	// Otherwise, the window(s) it contains will take all the resouce of CPU
@@ -213,27 +213,37 @@ void TabBar::reSizeTo(RECT & rc2Ajust)
 	// Do our own calculations because TabCtrl_AdjustRect doesn't work
 	// on vertical or multi-lined tab controls
 
-	RowCount = TabCtrl_GetRowCount(_hSelf);
-	TabCtrl_GetItemRect(_hSelf, 0, &RowRect);
-	if (_isTraditional)
-	{
-		TabCtrl_AdjustRect(_hSelf, FALSE, &rc2Ajust);
-	}
-	else if (_isVertical)
-	{
-		TabsLength  = RowCount * (RowRect.right - RowRect.left);
-		TabsLength += GetSystemMetrics(SM_CXEDGE);
+	rowCount = TabCtrl_GetRowCount(_hSelf);
+	TabCtrl_GetItemRect(_hSelf, 0, &rowRect);
 
-		rc2Ajust.left	+= TabsLength;
-		rc2Ajust.right	-= TabsLength;
+	int larger = _isVertical ? rowRect.right : rowRect.bottom;
+	int smaller = _isVertical ? rowRect.left : rowRect.top;
+	int marge = 0;
+
+	LONG_PTR style = ::GetWindowLongPtr(_hSelf, GWL_STYLE);
+	if (rowCount == 1)
+	{
+		style &= ~TCS_BUTTONS;
+	}
+	else // (rowCount >= 2)
+	{
+		style |= TCS_BUTTONS;
+		marge = 3; // in TCS_BUTTONS mode, each row has few pixels higher
+	}
+
+	::SetWindowLongPtr(_hSelf, GWL_STYLE, style);
+	tabsHight = rowCount * (larger - smaller + marge);
+	tabsHight += GetSystemMetrics(_isVertical ? SM_CXEDGE : SM_CYEDGE);
+
+	if (_isVertical)
+	{
+		rc2Ajust.left += tabsHight;
+		rc2Ajust.right -= tabsHight;
 	}
 	else
 	{
-		TabsLength  = RowCount * (RowRect.bottom - RowRect.top);
-		TabsLength += GetSystemMetrics(SM_CYEDGE);
-
-		rc2Ajust.top	+= TabsLength;
-		rc2Ajust.bottom -= TabsLength;
+		rc2Ajust.top += tabsHight;
+		rc2Ajust.bottom -= tabsHight;
 	}
 }
 
@@ -246,11 +256,10 @@ void TabBarPlus::destroy()
 }
 
 
-void TabBarPlus::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isTraditional, bool isMultiLine)
+void TabBarPlus::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isMultiLine)
 {
 	Window::init(hInst, parent);
 	int vertical = isVertical?(TCS_VERTICAL | TCS_MULTILINE | TCS_RIGHTJUSTIFY):0;
-	_isTraditional = isTraditional;
 	_isVertical = isVertical;
 	_isMultiLine = isMultiLine;
 
@@ -258,10 +267,9 @@ void TabBarPlus::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isTrad
 	icce.dwSize = sizeof(icce);
 	icce.dwICC = ICC_TAB_CLASSES;
 	InitCommonControlsEx(&icce);
-    int multiLine = isMultiLine?(_isTraditional?TCS_MULTILINE:0):0;
+	int multiLine = isMultiLine ? TCS_MULTILINE : 0;
 
-	int style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE |\
-        TCS_FOCUSNEVER | TCS_TABS | vertical | multiLine;
+	int style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | TCS_FOCUSNEVER | TCS_TABS | vertical | multiLine;
 
 	style |= TCS_OWNERDRAWFIXED;
 
@@ -298,34 +306,31 @@ void TabBarPlus::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isTrad
 	}
 	::SendMessage(_hSelf, TCM_SETTOOLTIPS, reinterpret_cast<WPARAM>(_tooltips), 0);
 
-	if (!_isTraditional)
-    {
-		if (!_hwndArray[_nbCtrl])
+	if (!_hwndArray[_nbCtrl])
+	{
+		_hwndArray[_nbCtrl] = _hSelf;
+		_ctrlID = _nbCtrl;
+	}
+	else
+	{
+		int i = 0;
+		bool found = false;
+		for ( ; i < nbCtrlMax && !found ; ++i)
+			if (!_hwndArray[i])
+				found = true;
+		if (!found)
 		{
-			_hwndArray[_nbCtrl] = _hSelf;
-			_ctrlID = _nbCtrl;
+			_ctrlID = -1;
+			destroy();
+			throw std::runtime_error("TabBarPlus::init : Tab Control error - Tab Control # is over its limit");
 		}
-		else
-		{
-			int i = 0;
-			bool found = false;
-			for ( ; i < nbCtrlMax && !found ; ++i)
-				if (!_hwndArray[i])
-					found = true;
-			if (!found)
-			{
-				_ctrlID = -1;
-				destroy();
-				throw std::runtime_error("TabBarPlus::init : Tab Control error - Tab Control # is over its limit");
-			}
-			_hwndArray[i] = _hSelf;
-			_ctrlID = i;
-		}
-		++_nbCtrl;
+		_hwndArray[i] = _hSelf;
+		_ctrlID = i;
+	}
+	++_nbCtrl;
 
-		::SetWindowLongPtr(_hSelf, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-		_tabBarDefaultProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(_hSelf, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(TabBarPlus_Proc)));
-    }
+	::SetWindowLongPtr(_hSelf, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+	_tabBarDefaultProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(_hSelf, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(TabBarPlus_Proc)));
 
 	LOGFONT LogFont;
 
@@ -418,6 +423,24 @@ void TabBarPlus::doMultiLine()
 	}
 }
 
+void TabBarPlus::notify(int notifyCode, int tabIndex)
+{
+	TBHDR nmhdr;
+	nmhdr.hdr.hwndFrom = _hSelf;
+	nmhdr.hdr.code = notifyCode;
+	nmhdr.hdr.idFrom = reinterpret_cast<UINT_PTR>(this);
+	nmhdr.tabOrigin = tabIndex;
+	::SendMessage(_hParent, WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&nmhdr));
+}
+
+void TabBarPlus::trackMouseEvent(DWORD event2check)
+{
+	TRACKMOUSEEVENT tme = {};
+	tme.cbSize = sizeof(tme);
+	tme.dwFlags = event2check;
+	tme.hwndTrack = _hSelf;
+	TrackMouseEvent(&tme);
+}
 
 LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
@@ -553,7 +576,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 			if (wParam == 2)
 				return TRUE;
 
-            if (_doDragNDrop)
+            if (_doDragNDrop && !isMultiLine())
             {
                 _nSrcTab = _nTabDragged = currentTabOn;
 
@@ -569,13 +592,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 			    }
             }
 
-			TBHDR nmhdr;
-			nmhdr.hdr.hwndFrom = _hSelf;
-			nmhdr.hdr.code = NM_CLICK;
-			nmhdr.hdr.idFrom = reinterpret_cast<UINT_PTR>(this);
-			nmhdr.tabOrigin = currentTabOn;
-
-			::SendMessage(_hParent, WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&nmhdr));
+			notify(NM_CLICK, currentTabOn);
 
             return TRUE;
 		}
@@ -589,11 +606,12 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 		//#define NPPM_INTERNAL_ISDRAGGING 40926
 		case WM_MOUSEMOVE :
 		{
+			POINT p;
+			p.x = LOWORD(lParam);
+			p.y = HIWORD(lParam);
+
 			if (_isDragging)
 			{
-				POINT p;
- 				p.x = LOWORD(lParam);
-				p.y = HIWORD(lParam);
                 exchangeItemData(p);
 
 				// Get cursor position of "Screen"
@@ -602,45 +620,80 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 				draggingCursor(_draggingPoint);
 			    return TRUE;
 			}
-
-			if (_drawTabCloseButton)
+			else
 			{
-				int xPos = LOWORD(lParam);
-				int yPos = HIWORD(lParam);
+				bool isFromTabToTab = false;
 
-				int _currentHoverTabItemOld = _currentHoverTabItem;
-				RECT _currentHoverTabRectOld = _currentHoverTabRect;
-				bool _isCloseHoverOld = _isCloseHover;
+				int iTabNow = getTabIndexAt(p.x, p.y); // _currentHoverTabItem keeps previous value, and it need to be updated
 
-				_currentHoverTabItem = getTabIndexAt(xPos, yPos);
-				if (_currentHoverTabItem != -1)
+				if (_currentHoverTabItem == iTabNow && _currentHoverTabItem != -1) // mouse moves arround in the same tab
 				{
-					::SendMessage(_hSelf, TCM_GETITEMRECT, _currentHoverTabItem, reinterpret_cast<LPARAM>(&_currentHoverTabRect));
-					_isCloseHover = _closeButtonZone.isHit(xPos, yPos, _currentHoverTabRect, _isVertical);
+					// do nothing
 				}
-				else
+				else if (iTabNow == -1 && _currentHoverTabItem != -1) // mouse is no more on any tab, set hover -1
 				{
-					SetRectEmpty(&_currentHoverTabRect);
-					_isCloseHover = false;
+					_currentHoverTabItem = -1;
+
+					// send mouse leave notif
+					notify(TCN_MOUSELEAVING, -1);
+				}
+				else if (iTabNow != -1 && _currentHoverTabItem == -1) // mouse is just entered in a tab zone
+				{
+					_currentHoverTabItem = iTabNow;
+
+					notify(TCN_MOUSEHOVERING, _currentHoverTabItem);
+				}
+				else if (iTabNow != -1 && _currentHoverTabItem != -1 && _currentHoverTabItem != iTabNow) // mouse is being moved from a tab and entering into another tab
+				{
+					isFromTabToTab = true;
+
+					// set current hovered
+					_currentHoverTabItem = iTabNow;
+
+					// send mouse enter notif
+					notify(TCN_MOUSEHOVERSWITCHING, _currentHoverTabItem);
+				}
+				else if (iTabNow == -1 && _currentHoverTabItem == -1) // mouse is already outside
+				{
+					// do nothing
 				}
 
-				if (_currentHoverTabItem != _currentHoverTabItemOld || _isCloseHover != _isCloseHoverOld)
+				if (_drawTabCloseButton)
 				{
-					if (_isCloseHoverOld && (_currentHoverTabItem != _currentHoverTabItemOld || !_isCloseHover))
-						InvalidateRect(hwnd, &_currentHoverTabRectOld, FALSE);
+					RECT currentHoverTabRectOld = _currentHoverTabRect;
+					bool isCloseHoverOld = _isCloseHover;
+
+					if (_currentHoverTabItem != -1) // is hovering
+					{
+						::SendMessage(_hSelf, TCM_GETITEMRECT, _currentHoverTabItem, reinterpret_cast<LPARAM>(&_currentHoverTabRect));
+						_isCloseHover = _closeButtonZone.isHit(p.x, p.y, _currentHoverTabRect, _isVertical);
+					}
+					else
+					{
+						SetRectEmpty(&_currentHoverTabRect);
+						_isCloseHover = false;
+					}
+
+					if (isFromTabToTab || _isCloseHover != isCloseHoverOld)
+					{
+						if (isCloseHoverOld && (isFromTabToTab || !_isCloseHover))
+							InvalidateRect(hwnd, &currentHoverTabRectOld, FALSE);
+
+						if (_isCloseHover)
+							InvalidateRect(hwnd, &_currentHoverTabRect, FALSE);
+					}
+
 					if (_isCloseHover)
-						InvalidateRect(hwnd, &_currentHoverTabRect, FALSE);
+					{
+						// Mouse moves out from close zone will send WM_MOUSELEAVE message
+						trackMouseEvent(TME_LEAVE);
+					}
 				}
-
-				if (_isCloseHover)
-				{
-					TRACKMOUSEEVENT tme = {};
-					tme.cbSize = sizeof(tme);
-					tme.dwFlags = TME_LEAVE;
-					tme.hwndTrack = hwnd;
-					TrackMouseEvent(&tme);
-				}
+				// Mouse moves out from tab zone will send WM_MOUSELEAVE message
+				// but it doesn't track mouse moving from a tab to another
+				trackMouseEvent(TME_LEAVE);
 			}
+
 			break;
 		}
 
@@ -648,9 +701,12 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 		{
 			if (_isCloseHover)
 				InvalidateRect(hwnd, &_currentHoverTabRect, FALSE);
+
 			_currentHoverTabItem = -1;
 			SetRectEmpty(&_currentHoverTabRect);
 			_isCloseHover = false;
+
+			notify(TCN_MOUSELEAVING, _currentHoverTabItem);
 			break;
 		}
 
@@ -664,17 +720,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 				if(::GetCapture() == _hSelf)
 					::ReleaseCapture();
 
-				// Send a notification message to the parent with wParam = 0, lParam = 0
-				// nmhdr.idFrom = this
-				// destIndex = this->_nSrcTab
-				// scrIndex  = this->_nTabDragged
-				TBHDR nmhdr;
-				nmhdr.hdr.hwndFrom = _hSelf;
-				nmhdr.hdr.code = _isDraggingInside?TCN_TABDROPPED:TCN_TABDROPPEDOUTSIDE;
-				nmhdr.hdr.idFrom = reinterpret_cast<UINT_PTR>(this);
-				nmhdr.tabOrigin = currentTabOn;
-
-				::SendMessage(_hParent, WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&nmhdr));
+				notify(_isDraggingInside?TCN_TABDROPPED:TCN_TABDROPPEDOUTSIDE, currentTabOn);
 				return TRUE;
 			}
 
@@ -682,14 +728,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 			{
 				if ((_whichCloseClickDown == currentTabOn) && _closeButtonZone.isHit(xPos, yPos, _currentHoverTabRect, _isVertical))
 				{
-					TBHDR nmhdr;
-					nmhdr.hdr.hwndFrom = _hSelf;
-					nmhdr.hdr.code = TCN_TABDELETE;
-					nmhdr.hdr.idFrom = reinterpret_cast<UINT_PTR>(this);
-					nmhdr.tabOrigin = currentTabOn;
-
-					::SendMessage(_hParent, WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&nmhdr));
-
+					notify(TCN_TABDELETE, currentTabOn);
 					_whichCloseClickDown = -1;
 					return TRUE;
 				}
@@ -727,13 +766,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 			int xPos = LOWORD(lParam);
 			int yPos = HIWORD(lParam);
 			int currentTabOn = getTabIndexAt(xPos, yPos);
-			TBHDR nmhdr;
-			nmhdr.hdr.hwndFrom = _hSelf;
-			nmhdr.hdr.code = TCN_TABDELETE;
-			nmhdr.hdr.idFrom = reinterpret_cast<UINT_PTR>(this);
-			nmhdr.tabOrigin = currentTabOn;
-
-			::SendMessage(_hParent, WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&nmhdr));
+			notify(TCN_TABDELETE, currentTabOn);
 			return TRUE;
 		}
 
@@ -744,13 +777,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 				int xPos = LOWORD(lParam);
 				int yPos = HIWORD(lParam);
 				int currentTabOn = getTabIndexAt(xPos, yPos);
-				TBHDR nmhdr;
-				nmhdr.hdr.hwndFrom = _hSelf;
-				nmhdr.hdr.code = TCN_TABDELETE;
-				nmhdr.hdr.idFrom = reinterpret_cast<UINT_PTR>(this);
-				nmhdr.tabOrigin = currentTabOn;
-
-				::SendMessage(_hParent, WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&nmhdr));
+				notify(TCN_TABDELETE, currentTabOn);
 			}
 			return TRUE;
 		}
