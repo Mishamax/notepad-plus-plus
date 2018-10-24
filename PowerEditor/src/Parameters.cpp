@@ -5934,6 +5934,9 @@ int NppParameters::langTypeToCommandID(LangType lt) const
 		case L_TEHEX :
 			id = IDM_LANG_TEHEX; break;
 
+		case L_SWIFT:
+			id = IDM_LANG_SWIFT; break;
+
 		case L_MARKDOWN :
 			id = IDM_LANG_MARKDOWN; break;
 
@@ -5942,6 +5945,7 @@ int NppParameters::langTypeToCommandID(LangType lt) const
 
 		case L_TEXT :
 			id = IDM_LANG_TEXT;	break;
+
 
 		default :
 			if(lt >= L_EXTERNAL && lt < L_END)

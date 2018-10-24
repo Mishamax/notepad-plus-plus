@@ -145,6 +145,7 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 {TEXT("srec"),			TEXT("S-Record"),			TEXT("Motorola S-Record binary data"),					L_SREC,			SCLEX_SREC},
 {TEXT("ihex"),			TEXT("Intel HEX"),			TEXT("Intel HEX binary data"),							L_IHEX,			SCLEX_IHEX},
 {TEXT("tehex"),			TEXT("Tektronix extended HEX"),	TEXT("Tektronix extended HEX binary data"),			L_TEHEX,		SCLEX_TEHEX},
+{TEXT("swift"),			TEXT("Swift"),              TEXT("Swift file"),										L_SWIFT,		SCLEX_CPP},
 {TEXT("markdown"),		TEXT("Markdown"),			TEXT("Markdown file"),									L_MARKDOWN,		SCLEX_MARKDOWN },
 {TEXT("ext"),			TEXT("External"),			TEXT("External"),										L_EXTERNAL,		SCLEX_NULL}
 };
@@ -153,9 +154,9 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 //const int MASK_GREEN = 0x00FF00;
 //const int MASK_BLUE  = 0x0000FF;
 
-const generic_string scintilla_signer_display_name = TEXT("Notepad++");
-const generic_string scintilla_signer_subject = TEXT("C=FR, S=Ile-de-France, L=Saint Cloud, O=\"Notepad++\", CN=\"Notepad++\"");
-const generic_string scintilla_signer_key_id = TEXT("42C4C5846BB675C74E2B2C90C69AB44366401093");
+#define SCINTILLA_SIGNER_DISPLAY_NAME TEXT("Notepad++")
+#define SCINTILLA_SIGNER_SUBJECT TEXT("C=FR, S=Ile-de-France, L=Saint Cloud, O=\"Notepad++\", CN=\"Notepad++\"")
+#define SCINTILLA_SIGNER_KEY_ID TEXT("42C4C5846BB675C74E2B2C90C69AB44366401093")
 
 
 int getNbDigits(int aNum, int base)
@@ -188,7 +189,7 @@ HMODULE loadSciLexerDll()
 
 	// Library verification disabled
 #if 0
-	bool isOK = VerifySignedLibrary(sciLexerPath, scintilla_signer_key_id, scintilla_signer_subject, scintilla_signer_display_name, false, false);
+	bool isOK = VerifySignedLibrary(sciLexerPath, SCINTILLA_SIGNER_KEY_ID, SCINTILLA_SIGNER_SUBJECT, SCINTILLA_SIGNER_DISPLAY_NAME, false, false);
 
 		if (!isOK)
 	{
@@ -347,7 +348,7 @@ LRESULT CALLBACK ScintillaEditView::scintillaStatic_Proc(HWND hwnd, UINT Message
 		bool isSynpnatic = std::string(synapticsHack) == "SynTrackCursorWindowClass";
 		bool makeTouchPadCompetible = ((NppParameters::getInstance())->getSVP())._disableAdvancedScrolling;
 
-		if (isSynpnatic || makeTouchPadCompetible)
+		if (pScint && (isSynpnatic || makeTouchPadCompetible))
 			return (pScint->scintillaNew_Proc(hwnd, Message, wParam, lParam));
 
 		ScintillaEditView *pScintillaOnMouse = (ScintillaEditView *)(::GetWindowLongPtr(hwndOnMouse, GWLP_USERDATA));
@@ -1081,7 +1082,6 @@ void ScintillaEditView::setTclLexer()
 	execute(SCI_SETKEYWORDS, 1, reinterpret_cast<LPARAM>(tclTypes));
 }
 
-//used by Objective-C and Actionscript
 void ScintillaEditView::setObjCLexer(LangType langType)
 {
     execute(SCI_SETLEXER, SCLEX_OBJC);
@@ -1418,6 +1418,7 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 		case L_RC :
 		case L_CS :
 		case L_FLASH :
+		case L_SWIFT:
 			setCppLexer(typeDoc); break;
 
 		case L_JS:
