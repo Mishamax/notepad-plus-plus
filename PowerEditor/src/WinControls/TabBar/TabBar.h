@@ -59,8 +59,8 @@ const TCHAR TABBAR_INACTIVETEXT[64] = TEXT("Inactive tabs");
 
 struct TBHDR
 {
-	NMHDR hdr;
-	int tabOrigin;
+	NMHDR _hdr;
+	int _tabOrigin;
 };
 
 
@@ -223,6 +223,8 @@ protected:
     // it's the boss to decide if we do the drag N drop
     static bool _doDragNDrop;
 	// drag N drop members
+	bool _mightBeDragging = false;
+	int _dragCount = 0;
 	bool _isDragging = false;
 	bool _isDraggingInside = false;
     int _nSrcTab = -1;
@@ -244,6 +246,8 @@ protected:
 	static LRESULT CALLBACK TabBarPlus_Proc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 		return (((TabBarPlus *)(::GetWindowLongPtr(hwnd, GWLP_USERDATA)))->runProc(hwnd, Message, wParam, lParam));
 	};
+	void setActiveTab(int tabIndex);
+	void exchangeTabItemData(int oldTab, int newTab);
 	void exchangeItemData(POINT point);
 
 

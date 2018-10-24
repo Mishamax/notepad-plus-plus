@@ -70,6 +70,7 @@ void Notepad_plus::command(int id)
 		case IDM_FILE_NEW:
 		{
 			fileNew();
+
 			/*
 			bool isFirstTime = not _pluginsAdminDlg.isCreated();
 			_pluginsAdminDlg.setPluginsManager(&_pluginsManager);
@@ -2438,7 +2439,6 @@ void Notepad_plus::command(int id)
 
         case IDM_SETTING_EDITCONTEXTMENU :
         {
-			generic_string warning, title;
 			_nativeLangSpeaker.messageBox("ContextMenuXmlEditWarning",
 				_pPublicInterface->getHSelf(),
 				TEXT("Editing contextMenu.xml allows you to modify your Notepad++ popup context menu on edit zone.\rYou have to restart your Notepad++ to take effect after modifying contextMenu.xml."),
@@ -2572,6 +2572,7 @@ void Notepad_plus::command(int id)
 					return;
 				}
 			}
+
 			if (doAboutDlg)
 			{
 				bool isFirstTime = !_aboutDlg.isCreated();
@@ -2659,11 +2660,11 @@ void Notepad_plus::command(int id)
 		case IDM_UPDATE_NPP :
 		case IDM_CONFUPDATERPROXY :
 		{
-			// wingup doesn't work with the obsolet security layer (API) under xp since downloadings are secured with SSL on notepad_plus_plus.org
+			// wingup doesn't work with the obsolete security layer (API) under xp since downloadings are secured with SSL on notepad_plus_plus.org
 			winVer ver = NppParameters::getInstance()->getWinVersion();
 			if (ver <= WV_XP)
 			{
-				long res = ::MessageBox(NULL, TEXT("Notepad++ updater is not compatible with XP due to the obsolet security layer under XP.\rDo you want to go to Notepad++ page to download the latest version?"), TEXT("Notepad++ Updater"), MB_YESNO);
+				long res = ::MessageBox(NULL, TEXT("Notepad++ updater is not compatible with XP due to the obsolete security layer under XP.\rDo you want to go to Notepad++ page to download the latest version?"), TEXT("Notepad++ Updater"), MB_YESNO);
 				if (res == IDYES)
 				{
 					::ShellExecute(NULL, TEXT("open"), TEXT("https://notepad-plus-plus.org/download/"), NULL, NULL, SW_SHOWNORMAL);
@@ -2789,6 +2790,10 @@ void Notepad_plus::command(int id)
 		case IDM_LANG_USER :
 		{
             setLanguage(menuID2LangType(id));
+			// Manually set language, don't change language even file extension changes.
+			Buffer *buffer = _pEditView->getCurrentBuffer();
+			buffer->langHasBeenSetFromMenu();
+
 			if (_pDocMap)
 			{
 				_pDocMap->setSyntaxHiliting();

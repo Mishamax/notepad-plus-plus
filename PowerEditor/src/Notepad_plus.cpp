@@ -634,6 +634,7 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	_md5FromFilesDlg.init(_pPublicInterface->getHinst(), hwnd);
 	_md5FromTextDlg.init(_pPublicInterface->getHinst(), hwnd);
 	_runMacroDlg.init(_pPublicInterface->getHinst(), hwnd);
+	_documentSnapshot.init(_pPublicInterface->getHinst(), hwnd);
 
     //--User Define Dialog Section--//
 	int uddStatus = nppGUI._userDefineDlgStatus;
@@ -1809,7 +1810,7 @@ void Notepad_plus::filePrint(bool showDialog)
 	int startPos = int(_pEditView->execute(SCI_GETSELECTIONSTART));
 	int endPos = int(_pEditView->execute(SCI_GETSELECTIONEND));
 
-	printer.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), _pEditView, showDialog, startPos, endPos);
+	printer.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), _pEditView, showDialog, startPos, endPos, _nativeLangSpeaker.isRTL());
 	printer.doPrint();
 }
 
@@ -3185,28 +3186,16 @@ void Notepad_plus::dropFiles(HDROP hdrop)
 		else if (not isOldMode && (folderPaths.size() != 0 && filePaths.size() != 0)) // new mode && both folders & files
 		{
 			// display error & do nothing
+			_nativeLangSpeaker.messageBox("DroppingFolderAsProjetModeWarning",
+				_pPublicInterface->getHSelf(),
+				TEXT("You can drop only files or folders but not both, because you're in dropping Folder as Projet mode.\ryou have to enable \"Open all files of folder instead of launching Folder as Workspace on folder dropping\" in \"Default Directory\" section of Preferences dialog to make this operation work."),
+				TEXT("Invalid action"),
+				MB_OK | MB_APPLMODAL);
 		}
 		else if (not isOldMode && (folderPaths.size() != 0 && filePaths.size() == 0)) // new mode && only folders
 		{
 			// process new mode
 			launchFileBrowser(folderPaths);
-
-			/*
-			for (int i = 0; i < filesDropped; ++i)
-			{
-				if (not _pFileBrowser->isAlreadyExist(folderPaths[i]))
-				{
-					vector<generic_string> patterns2Match;
-					patterns2Match.push_back(TEXT("*.*"));
-
-					FolderInfo directoryStructure;
-					getDirectoryStructure(folderPaths[i].c_str(), patterns2Match, directoryStructure, true, false);
-					_pFileBrowser->setDirectoryStructure(directoryStructure);
-				}
-				int j = 0;
-				j++;
-			}
-			*/
 		}
 
 		if (lastOpened != BUFFER_INVALID) 
@@ -4879,7 +4868,7 @@ void Notepad_plus::getCurrentOpenedFiles(Session & session, bool includUntitledD
 
 			generic_string	languageName = getLangFromMenu(buf);
 			const TCHAR *langName = languageName.c_str();
-			sessionFileInfo sfi(buf->getFullPathName(), langName, buf->getEncoding(), buf->getPosition(editView), buf->getBackupFileName().c_str(), int(buf->getLastModifiedTimestamp()));
+			sessionFileInfo sfi(buf->getFullPathName(), langName, buf->getEncoding(), buf->getPosition(editView), buf->getBackupFileName().c_str(), int(buf->getLastModifiedTimestamp()), buf->getMapPosition());
 
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, buf->getDocument());
 			size_t maxLine = static_cast<size_t>(_invisibleEditView.execute(SCI_GETLINECOUNT));
@@ -5944,7 +5933,7 @@ struct Quote
 
 
 
-const int nbQuote = 205;
+const int nbQuote = 207;
 Quote quotes[nbQuote] =
 {
 	{"Notepad++", "I hate reading other people's code.\nSo I wrote mine, made it as open source project, and see others suffer."},
@@ -6064,7 +6053,7 @@ Quote quotes[nbQuote] =
 	{"Anonymous #85", "Race, religion, ethnic pride and nationalism etc... does nothing but teach you how to hate people that you've never met."},
 	{"Anonymous #86", "Farts are just the ghosts of the things we eat."},
 	{"Anonymous #87", "I promised I would never kill someone who had my blood.\nBut that mosquito made me break my word."},
-	//{"Anonymous #88", ""},
+	{"Anonymous #88", "A foo walks into a bar,\ntakes a look around and\nsays \"Hello World!\"."},
 	{"Anonymous #89", "I'm drunk and you're still ugly."},
 	{"Anonymous #90", "Clapping:\n(verb)\nRepeatedly high-fiving yourself for someone else's accomplishments."},
 	{"Anonymous #91", "CV: ctrl-C, ctrl-V"},
@@ -6081,7 +6070,7 @@ Quote quotes[nbQuote] =
 	{"Anonymous #102", "If IE is brave enough to ask you to set it as your default browser,\ndon't tell me you dare not ask a girl out."},
 	{"Anonymous #103", "Turn on your brain, turn off TV."},
 	{"Anonymous #104", "The main idea of \"Inception\":\nif you run a VM inside a VM inside a VM inside a VM inside a VM,\neverything will be very slow."},
-	//{"Anonymous #105", ""},
+	{"Anonymous #105", "Q: What's the object-oriented way to become wealthy?\nA: Inheritance."},
 	{"Anonymous #106", "When I die, I want to go peacefully like my grandfather did, in his sleep\n- not screaming, like the passengers in his car."},
 	{"Anonymous #107", "Remember, YOUR God is real.\nAll those other Gods are ridiculous, made-up nonsense.\nBut not yours.\nYour God is real. Whichever one that is."},
 	{"Anonymous #108", "I hope Bruce Willis dies of a Viagra overdose,\nThe way you can see the headline:\nBruce Willis, Died Hard"},
