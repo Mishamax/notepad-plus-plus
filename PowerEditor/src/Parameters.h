@@ -847,7 +847,7 @@ struct NppGUI final
 
 	bool _isFolderDroppedOpenFiles = false;
 
-	bool _isDocPeekOnTab = true;
+	bool _isDocPeekOnTab = false;
 	bool _isDocPeekOnMap = false;
 };
 
