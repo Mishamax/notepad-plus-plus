@@ -188,9 +188,9 @@ HMODULE loadSciLexerDll()
 
 	// Library verification disabled
 #if 0
-	bool isOK = VerifySignedLibrary(sciLexerPath, scintilla_signer_key_id, scintilla_signer_subject, scintilla_signer_display_name, false);
+	bool isOK = VerifySignedLibrary(sciLexerPath, scintilla_signer_key_id, scintilla_signer_subject, scintilla_signer_display_name, false, false);
 
-	if (!isOK)
+		if (!isOK)
 	{
 		::MessageBox(NULL,
 			TEXT("Authenticode check failed: signature or signing certificate are not recognized"),
