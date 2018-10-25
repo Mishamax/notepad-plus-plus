@@ -81,6 +81,7 @@ static const WinMenuKeyDefinition winKeyDefs[] =
 	{ VK_O,       IDM_FILE_OPEN,                                true,  false, false, nullptr },
 	{ VK_NULL,    IDM_FILE_OPEN_FOLDER,                         false, false, false, nullptr },
 	{ VK_NULL,    IDM_FILE_OPEN_CMD,                            false, false, false, nullptr },
+	{ VK_NULL,    IDM_FILE_OPEN_DEFAULT_VIEWER,                 false, false, false, nullptr },
 	{ VK_NULL,    IDM_FILE_OPENFOLDERASWORSPACE,                false, false, false, nullptr },
 	{ VK_NULL,    IDM_FILE_RELOAD,                              false, false, false, nullptr },
 	{ VK_S,       IDM_FILE_SAVE,                                true,  false, false, nullptr },
@@ -1035,6 +1036,11 @@ bool NppParameters::load()
 		if (!PathFileExists(_userPath.c_str()))
 			::CreateDirectory(_userPath.c_str(), NULL);
 	}
+	
+	_localAppdataNppDir = getSpecialFolderLocation(CSIDL_LOCAL_APPDATA);
+	PathAppend(_localAppdataNppDir, TEXT("Notepad++"));
+	if (!PathFileExists(_localAppdataNppDir.c_str()))
+		::CreateDirectory(_localAppdataNppDir.c_str(), NULL);
 
 	_sessionPath = _userPath; // Session stock the absolute file path, it should never be on cloud
 
@@ -1704,9 +1710,9 @@ bool NppParameters::getBlackListFromXmlTree()
 
 void NppParameters::initMenuKeys()
 {
-	int nrCommands = sizeof(winKeyDefs)/sizeof(WinMenuKeyDefinition);
+	int nbCommands = sizeof(winKeyDefs)/sizeof(WinMenuKeyDefinition);
 	WinMenuKeyDefinition wkd;
-	for(int i = 0; i < nrCommands; ++i)
+	for(int i = 0; i < nbCommands; ++i)
 	{
 		wkd = winKeyDefs[i];
 		Shortcut sc((wkd.specialName ? wkd.specialName : TEXT("")), wkd.isCtrl, wkd.isAlt, wkd.isShift, static_cast<unsigned char>(wkd.vKey));
@@ -1716,13 +1722,13 @@ void NppParameters::initMenuKeys()
 
 void NppParameters::initScintillaKeys() {
 
-	int nrCommands = sizeof(scintKeyDefs)/sizeof(ScintillaKeyDefinition);
+	int nbCommands = sizeof(scintKeyDefs)/sizeof(ScintillaKeyDefinition);
 
 	//Warning! Matching function have to be consecutive
 	ScintillaKeyDefinition skd;
 	int prevIndex = -1;
 	int prevID = -1;
-	for(int i = 0; i < nrCommands; ++i)
+	for(int i = 0; i < nbCommands; ++i)
 	{
 		skd = scintKeyDefs[i];
 		if (skd.functionId == prevID)
@@ -5935,6 +5941,63 @@ int NppParameters::langTypeToCommandID(LangType lt) const
 
 		case L_SWIFT:
 			id = IDM_LANG_SWIFT; break;
+
+		case L_ASN1 :
+			id = IDM_LANG_ASN1; break;
+
+        case L_AVS :
+			id = IDM_LANG_AVS; break;
+
+		case L_BLITZBASIC :
+			id = IDM_LANG_BLITZBASIC; break;
+
+		case L_PUREBASIC :
+			id = IDM_LANG_PUREBASIC; break;
+
+		case L_FREEBASIC :
+			id = IDM_LANG_FREEBASIC; break;
+
+		case L_CSOUND :
+			id = IDM_LANG_CSOUND; break;
+
+		case L_ERLANG :
+			id = IDM_LANG_ERLANG; break;
+
+		case L_ESCRIPT :
+			id = IDM_LANG_ESCRIPT; break;
+
+		case L_FORTH :
+			id = IDM_LANG_FORTH; break;
+
+		case L_LATEX :
+			id = IDM_LANG_LATEX; break;
+
+		case L_MMIXAL :
+			id = IDM_LANG_MMIXAL; break;
+
+		case L_NIMROD :
+			id = IDM_LANG_NIMROD; break;
+
+		case L_NNCRONTAB :
+			id = IDM_LANG_NNCRONTAB; break;
+
+		case L_OSCRIPT :
+			id = IDM_LANG_OSCRIPT; break;
+
+		case L_REBOL :
+			id = IDM_LANG_REBOL; break;
+
+		case L_REGISTRY :
+			id = IDM_LANG_REGISTRY; break;
+
+		case L_RUST :
+			id = IDM_LANG_RUST; break;
+
+		case L_SPICE :
+			id = IDM_LANG_SPICE; break;
+
+		case L_TXT2TAGS :
+			id = IDM_LANG_TXT2TAGS; break;
 
 		case L_MARKDOWN :
 			id = IDM_LANG_MARKDOWN; break;

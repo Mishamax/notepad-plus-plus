@@ -146,7 +146,26 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 {TEXT("ihex"),			TEXT("Intel HEX"),			TEXT("Intel HEX binary data"),							L_IHEX,			SCLEX_IHEX},
 {TEXT("tehex"),			TEXT("Tektronix extended HEX"),	TEXT("Tektronix extended HEX binary data"),			L_TEHEX,		SCLEX_TEHEX},
 {TEXT("swift"),			TEXT("Swift"),              TEXT("Swift file"),										L_SWIFT,		SCLEX_CPP},
-{TEXT("markdown"),		TEXT("Markdown"),			TEXT("Markdown file"),									L_MARKDOWN,		SCLEX_MARKDOWN },
+{TEXT("asn1"),			TEXT("ASN.1"),				TEXT("Abstract Syntax Notation One file"),				L_ASN1,			SCLEX_ASN1},
+{TEXT("avs"),			TEXT("AviSynth"),			TEXT("AviSynth scripts files"),							L_AVS,			SCLEX_AVS},
+{TEXT("blitzbasic"),	TEXT("BlitzBasic"),			TEXT("BlitzBasic file"),								L_BLITZBASIC,	SCLEX_BLITZBASIC},
+{TEXT("purebasic"),		TEXT("PureBasic"),			TEXT("PureBasic file"),									L_PUREBASIC,	SCLEX_PUREBASIC},
+{TEXT("freebasic"),		TEXT("FreeBasic"),			TEXT("FreeBasic file"),									L_FREEBASIC,	SCLEX_FREEBASIC},
+{TEXT("csound"),		TEXT("Csound"),				TEXT("Csound file"),									L_CSOUND,		SCLEX_CSOUND},
+{TEXT("erlang"),		TEXT("Erlang"),				TEXT("Erlang file"),									L_ERLANG,		SCLEX_ERLANG},
+{TEXT("escript"),		TEXT("ESCRIPT"),			TEXT("ESCRIPT file"),									L_ESCRIPT,		SCLEX_ESCRIPT},
+{TEXT("forth"),			TEXT("Forth"),				TEXT("Forth file"),										L_FORTH,		SCLEX_FORTH},
+{TEXT("latex"),			TEXT("LaTeX"),				TEXT("LaTeX file"),										L_LATEX,		SCLEX_LATEX},
+{TEXT("mmixal"),		TEXT("MMIXAL"),				TEXT("MMIXAL file"),									L_MMIXAL,		SCLEX_MMIXAL},
+{TEXT("nimrod"),		TEXT("Nimrod"),				TEXT("Nimrod file"),									L_NIMROD,		SCLEX_NIMROD},
+{TEXT("nncrontab"),		TEXT("Nncrontab"),			TEXT("extended crontab file"),							L_NNCRONTAB,	SCLEX_NNCRONTAB},
+{TEXT("oscript"),		TEXT("OScript"),			TEXT("OScript source file"),							L_OSCRIPT,		SCLEX_OSCRIPT},
+{TEXT("rebol"),			TEXT("REBOL"),				TEXT("REBOL file"),										L_REBOL,		SCLEX_REBOL},
+{TEXT("registry"),		TEXT("registry"),			TEXT("registry file"),									L_REGISTRY,		SCLEX_REGISTRY},
+{TEXT("rust"),			TEXT("Rust"),				TEXT("Rust file"),										L_RUST,			SCLEX_RUST},
+{TEXT("spice"),			TEXT("Spice"),				TEXT("spice file"),										L_SPICE,		SCLEX_SPICE},
+{TEXT("txt2tags"),		TEXT("txt2tags"),			TEXT("txt2tags file"),									L_TXT2TAGS,		SCLEX_TXT2TAGS},
+{TEXT("markdown"),		TEXT("Markdown"),			TEXT("Markdown file"),									L_MARKDOWN,		SCLEX_MARKDOWN},
 {TEXT("ext"),			TEXT("External"),			TEXT("External"),										L_EXTERNAL,		SCLEX_NULL}
 };
 
@@ -954,13 +973,10 @@ void ScintillaEditView::setJsLexer()
 	LexerStyler *pNewStyler = (_pParameter->getLStylerArray()).getLexerStylerByName(newLexerName);
 	if (pNewStyler) // New js styler is available, so we can use it do more modern styling
 	{
-		if (pNewStyler)
+		for (int i = 0, nb = pNewStyler->getNbStyler(); i < nb; ++i)
 		{
-			for (int i = 0, nb = pNewStyler->getNbStyler(); i < nb; ++i)
-			{
-				Style & style = pNewStyler->getStyler(i);
-				setStyle(style);
-			}
+			Style & style = pNewStyler->getStyler(i);
+			setStyle(style);
 		}
 
 		basic_string<char> keywordListInstruction("");
@@ -1617,6 +1633,63 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 
 		case L_TEHEX :
 			setTEHexLexer(); break;
+
+		case L_ASN1 :
+			setAsn1Lexer(); break;
+
+		case L_AVS :
+			setAVSLexer(); break;
+
+		case L_BLITZBASIC :
+			setBlitzBasicLexer(); break;
+
+		case L_PUREBASIC :
+			setPureBasicLexer(); break;
+
+		case L_FREEBASIC :
+			setFreeBasicLexer(); break;
+
+		case L_CSOUND :
+			setCsoundLexer(); break;
+
+		case L_ERLANG :
+			setErlangLexer(); break;
+
+		case L_ESCRIPT :
+			setESCRIPTLexer(); break;
+
+		case L_FORTH :
+			setForthLexer(); break;
+
+		case L_LATEX :
+			setLatexLexer(); break;
+
+		case L_MMIXAL :
+			setMMIXALLexer(); break;
+
+		case L_NIMROD :
+			setNimrodLexer(); break;
+
+		case L_NNCRONTAB :
+			setNncrontabLexer(); break;
+
+		case L_OSCRIPT :
+			setOScriptLexer(); break;
+
+		case L_REBOL :
+			setREBOLLexer(); break;
+
+		case L_REGISTRY :
+			setRegistryLexer(); break;
+
+		case L_RUST :
+			setRustLexer(); break;
+
+		case L_SPICE :
+			setSpiceLexer(); break;
+
+		case L_TXT2TAGS :
+			setTxt2tagsLexer(); break;
 
 		case L_TEXT :
 		default :
@@ -3023,12 +3096,12 @@ void ScintillaEditView::hideLines()
 	int endLine = static_cast<int32_t>(execute(SCI_LINEFROMPOSITION, execute(SCI_GETSELECTIONEND)));
 	//perform range check: cannot hide very first and very last lines
 	//Offset them one off the edges, and then check if they are within the reasonable
-	int nrLines = static_cast<int32_t>(execute(SCI_GETLINECOUNT));
-	if (nrLines < 3)
+	int nbLines = static_cast<int32_t>(execute(SCI_GETLINECOUNT));
+	if (nbLines < 3)
 		return;	//cannot possibly hide anything
 	if (!startLine)
 		++startLine;
-	if (endLine == (nrLines-1))
+	if (endLine == (nbLines-1))
 		--endLine;
 
 	if (startLine > endLine)

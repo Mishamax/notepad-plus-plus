@@ -49,6 +49,7 @@
 #include "functionListPanel.h"
 #include "fileBrowser.h"
 #include "LongRunningOperation.h"
+#include "Common.h"
 
 using namespace std;
 
@@ -403,6 +404,13 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	const TCHAR *appDataNpp = pNppParam->getAppDataNppDir();
 	if (appDataNpp[0] && isLoadFromAppDataAllow)
 		_pluginsManager.loadPlugins(appDataNpp);
+
+	generic_string localAppDataNppPluginsDir = pNppParam->getLocalAppDataNppDir();
+	if (!localAppDataNppPluginsDir.empty() && isLoadFromAppDataAllow)
+	{
+		PathAppend(localAppDataNppPluginsDir, TEXT("plugins"));
+		_pluginsManager.loadPluginsV2(localAppDataNppPluginsDir.c_str());
+	}
 
 	// Load plugins from its installation directory.
 	// All loaded dll will be ignored
@@ -1899,7 +1907,7 @@ void Notepad_plus::checkDocState()
 	bool isFileExisting = PathFileExists(curBuf->getFullPathName()) != FALSE;
 	if (!isCurrentDirty)
 	{
-		for (size_t i = 0; i < MainFileManager->getNrBuffers(); ++i)
+		for (size_t i = 0; i < MainFileManager->getNbBuffers(); ++i)
 		{
 			if (MainFileManager->getBufferByIndex(i)->isDirty())
 			{
@@ -1935,6 +1943,8 @@ void Notepad_plus::checkDocState()
 	enableCommand(IDM_FILE_OPEN_CMD, isFileExisting, MENU);
 	enableCommand(IDM_FILE_OPEN_FOLDER, isFileExisting, MENU);
 	enableCommand(IDM_FILE_RELOAD, isFileExisting, MENU);
+
+	enableCommand(IDM_FILE_OPEN_DEFAULT_VIEWER, isAssoCommandExisting(curBuf->getFullPathName()), MENU);
 
 	enableConvertMenuItems(curBuf->getEolFormat());
 	checkUnicodeMenuItems();
@@ -2846,6 +2856,44 @@ LangType Notepad_plus::menuID2LangType(int cmdID)
             return L_TEHEX;
 		case IDM_LANG_SWIFT:
 			return L_SWIFT;
+        case IDM_LANG_ASN1 :
+            return L_ASN1;
+        case IDM_LANG_AVS :
+            return L_AVS;
+        case IDM_LANG_BLITZBASIC :
+            return L_BLITZBASIC;
+        case IDM_LANG_PUREBASIC :
+            return L_PUREBASIC;
+        case IDM_LANG_FREEBASIC :
+            return L_FREEBASIC;
+        case IDM_LANG_CSOUND :
+            return L_CSOUND;
+        case IDM_LANG_ERLANG :
+            return L_ERLANG;
+        case IDM_LANG_ESCRIPT :
+            return L_ESCRIPT;
+        case IDM_LANG_FORTH :
+            return L_FORTH;
+        case IDM_LANG_LATEX :
+            return L_LATEX;
+        case IDM_LANG_MMIXAL :
+            return L_MMIXAL;
+        case IDM_LANG_NIMROD :
+            return L_NIMROD;
+        case IDM_LANG_NNCRONTAB :
+            return L_NNCRONTAB;
+        case IDM_LANG_OSCRIPT :
+            return L_OSCRIPT;
+        case IDM_LANG_REBOL :
+            return L_REBOL;
+        case IDM_LANG_REGISTRY :
+            return L_REGISTRY;
+        case IDM_LANG_RUST :
+            return L_RUST;
+        case IDM_LANG_SPICE :
+            return L_SPICE;
+        case IDM_LANG_TXT2TAGS :
+            return L_TXT2TAGS;
 
 		case IDM_LANG_MARKDOWN :
 			return L_MARKDOWN;
@@ -4917,7 +4965,7 @@ bool Notepad_plus::dumpFiles(const TCHAR * outdir, const TCHAR * fileprefix) {
 	TCHAR savePath[MAX_PATH] = {0};
 
 	//rescue primary
-	for (size_t i = 0; i < MainFileManager->getNrBuffers(); ++i)
+	for (size_t i = 0; i < MainFileManager->getNbBuffers(); ++i)
 	{
 		Buffer * docbuf = MainFileManager->getBufferByIndex(i);
 		if (!docbuf->isDirty())	//skip saved documents
@@ -5014,7 +5062,12 @@ void Notepad_plus::notifyBufferChanged(Buffer * buffer, int mask)
 
 					// Then we ask user to update
 					if (doReloadOrNot(buffer->getFullPathName(), buffer->isDirty()) != IDYES)
+					{
+						// Since the file content has changed but the user doesn't want to reload it, set state to dirty
+						buffer->setDirty(true);
+
 						break;	//abort
+					}
 				}
 				// Set _isLoadedDirty false so when the document clean state is reached the icon will be set to blue
 				buffer->setLoadedDirty(false);
@@ -5201,7 +5254,8 @@ void Notepad_plus::notifyBufferActivated(BufferID bufid, int view)
 	_linkTriggered = true;
 }
 
-void Notepad_plus::loadCommandlineParams(const TCHAR * commandLine, CmdLineParams * pCmdParams) {
+void Notepad_plus::loadCommandlineParams(const TCHAR * commandLine, CmdLineParams * pCmdParams)
+{
 	if (!commandLine || ! pCmdParams)
 		return;
 
@@ -5763,6 +5817,10 @@ void Notepad_plus::launchFileBrowser(const vector<generic_string> & folders)
 	}
 
 	_pFileBrowser->display();
+
+	checkMenuItem(IDM_VIEW_FILEBROWSER, true);
+	_toolBar.setCheck(IDM_VIEW_FILEBROWSER, true);
+	_pFileBrowser->setClosed(false);
 }
 
 
