@@ -397,10 +397,10 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	_scintillaCtrls4Plugins.init(_pPublicInterface->getHinst(), hwnd);
 	_pluginsManager.init(nppData);
 
-	// Load plugins firstly from "%APPDATA%/Notepad++/plugins"
-	// if Notepad++ is not in localConf mode.
+	// If Notepad++ is not in localConf mode, load plugins firstly from "%APPDATA%/Notepad++/plugins"
 	// All the dll loaded are marked.
 	bool isLoadFromAppDataAllow = ::SendMessage(_pPublicInterface->getHSelf(), NPPM_GETAPPDATAPLUGINSALLOWED, 0, 0) == TRUE;
+
 	const TCHAR *appDataNpp = pNppParam->getAppDataNppDir();
 	if (appDataNpp[0] && isLoadFromAppDataAllow)
 		_pluginsManager.loadPlugins(appDataNpp);
@@ -2894,10 +2894,10 @@ LangType Notepad_plus::menuID2LangType(int cmdID)
             return L_SPICE;
         case IDM_LANG_TXT2TAGS :
             return L_TXT2TAGS;
-
+        case IDM_LANG_VISUALPROLOG:
+            return L_VISUALPROLOG;
 		case IDM_LANG_MARKDOWN :
 			return L_MARKDOWN;
-
 		case IDM_LANG_USER :
             return L_USER;
 		default: {
@@ -5993,11 +5993,12 @@ struct Quote
 
 
 
-const int nbQuote = 209;
+const int nbQuote = 210;
 Quote quotes[nbQuote] =
 {
 	{"Notepad++", "I hate reading other people's code.\nSo I wrote mine, made it as open source project, and see others suffer."},
 	{"Notepad++ #2", "Good programmers use Notepad++ to code.\nExtreme programmers use MS Word to code, in Comic Sans, center aligned."},
+	{"Notepad++ #3", "The best things in life are free.\nNotepad++ is free.\nSo Notepad++ is the best.\n"},
 	{"Richard Stallman?", "If I'm the Father of Open Source, it was conceived through artificial insemination using stolen sperm without my knowledge or consent."},
 	{"Martin Golding", "Always code as if the guy who ends up maintaining your code will be a violent psychopath who knows where you live."},
 	{"L. Peter Deutsch", "To iterate is human, to recurse divine."},

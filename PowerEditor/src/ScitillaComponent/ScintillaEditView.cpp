@@ -165,6 +165,7 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 {TEXT("rust"),			TEXT("Rust"),				TEXT("Rust file"),										L_RUST,			SCLEX_RUST},
 {TEXT("spice"),			TEXT("Spice"),				TEXT("spice file"),										L_SPICE,		SCLEX_SPICE},
 {TEXT("txt2tags"),		TEXT("txt2tags"),			TEXT("txt2tags file"),									L_TXT2TAGS,		SCLEX_TXT2TAGS},
+{TEXT("visualprolog"),	TEXT("Visual Prolog"),		TEXT("Visual Prolog file"),								L_VISUALPROLOG,	SCLEX_VISUALPROLOG},
 {TEXT("markdown"),		TEXT("Markdown"),			TEXT("Markdown file"),									L_MARKDOWN,		SCLEX_MARKDOWN},
 {TEXT("ext"),			TEXT("External"),			TEXT("External"),										L_EXTERNAL,		SCLEX_NULL}
 };
@@ -1619,9 +1620,6 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 		case L_COFFEESCRIPT :
 			setCoffeeScriptLexer(); break;
 
-		case L_MARKDOWN :
-			setMarkdownLexer(); break;
-
 		case L_BAANC:
 			setBaanCLexer(); break;
 
@@ -1690,6 +1688,12 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 
 		case L_TXT2TAGS :
 			setTxt2tagsLexer(); break;
+
+		case L_VISUALPROLOG:
+			setVisualPrologLexer(); break;
+
+		case L_MARKDOWN:
+			setMarkdownLexer(); break;
 
 		case L_TEXT :
 		default :
