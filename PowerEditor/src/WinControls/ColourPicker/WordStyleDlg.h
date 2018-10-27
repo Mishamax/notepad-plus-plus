@@ -74,7 +74,7 @@ public :
         Window::init(hInst, parent);
 	};
 
-	virtual void create(int dialogID, bool isRTL = false);
+	virtual void create(int dialogID, bool isRTL = false, bool msgDestParent = true);
 
     void doDialog(bool isRTL = false) {
     	if (!isCreated())
@@ -96,9 +96,9 @@ public :
 		_gOverride2restored = (NppParameters::getInstance())->getGlobalOverrideStyle();
 	};
 
-    virtual void redraw() const {
-        _pFgColour->redraw();
-		_pBgColour->redraw();
+    virtual void redraw(bool forceUpdate = false) const {
+        _pFgColour->redraw(forceUpdate);
+		_pBgColour->redraw(forceUpdate);
 		::InvalidateRect(_hStyleInfoStaticText, NULL, TRUE);
 		::UpdateWindow(_hStyleInfoStaticText);
     };

@@ -62,7 +62,6 @@ const bool dirDown = false;
 #define generic_sscanf swscanf
 #define generic_fopen _wfopen
 #define generic_fgets fgetws
-#define generic_stat _wstat
 #define COPYDATA_FILENAMES COPYDATA_FILENAMESW
 
 typedef std::basic_string<TCHAR> generic_string;
@@ -172,11 +171,14 @@ generic_string PathRemoveFileSpec(generic_string & path);
 generic_string PathAppend(generic_string &strDest, const generic_string & str2append);
 COLORREF getCtrlBgColor(HWND hWnd);
 generic_string stringToUpper(generic_string strToConvert);
+generic_string stringToLower(generic_string strToConvert);
 generic_string stringReplace(generic_string subject, const generic_string& search, const generic_string& replace);
 std::vector<generic_string> stringSplit(const generic_string& input, const generic_string& delimiter);
 generic_string stringJoin(const std::vector<generic_string>& strings, const generic_string& separator);
 generic_string stringTakeWhileAdmissable(const generic_string& input, const generic_string& admissable);
 double stodLocale(const generic_string& str, _locale_t loc, size_t* idx = NULL);
+
+int OrdinalIgnoreCaseCompareStrings(LPCTSTR sz1, LPCTSTR sz2);
 
 bool str2Clipboard(const generic_string &str2cpy, HWND hwnd);
 
@@ -189,3 +191,8 @@ HWND CreateToolTip(int toolID, HWND hDlg, HINSTANCE hInst, const PTSTR pszText);
 
 bool isCertificateValidated(const generic_string & fullFilePath, const generic_string & subjectName2check);
 bool isAssoCommandExisting(LPCTSTR FullPathName);
+
+std::wstring s2ws(const std::string& str);
+std::string ws2s(const std::wstring& wstr);
+
+bool deleteFileOrFolder(const generic_string& f2delete);

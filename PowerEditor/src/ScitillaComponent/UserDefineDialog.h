@@ -329,8 +329,8 @@ public :
     void setScintilla(ScintillaEditView *pScinView) {
         _pScintilla = pScinView;
     };
-     virtual void create(int dialogID, bool isRTL = false) {
-        StaticDialog::create(dialogID, isRTL);
+     virtual void create(int dialogID, bool isRTL = false, bool msgDestParent = true) {
+        StaticDialog::create(dialogID, isRTL, msgDestParent);
     }
     void destroy() {
         // A Ajouter les fils...
@@ -404,7 +404,7 @@ class StringDlg : public StaticDialog
 {
 public :
     StringDlg() : StaticDialog() {};
-    void init(HINSTANCE hInst, HWND parent, TCHAR *title, TCHAR *staticName, TCHAR *text2Set, int txtLen = 0) {
+    void init(HINSTANCE hInst, HWND parent, const TCHAR *title, const TCHAR *staticName, const TCHAR *text2Set, int txtLen = 0) {
         Window::init(hInst, parent);
         _title = title;
         _static = staticName;

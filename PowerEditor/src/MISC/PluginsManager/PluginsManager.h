@@ -101,7 +101,7 @@ public:
 
     int loadPlugin(const TCHAR *pluginFilePath, std::vector<generic_string> & dll2Remove);
 	bool loadPlugins(const TCHAR *dir = NULL);
-	bool loadPluginsV2(const TCHAR *dir);
+	bool loadPluginsV2(const TCHAR *dir = NULL);
 
     bool unloadPlugin(int index, HWND nppHandle);
 
@@ -109,8 +109,9 @@ public:
 	void runPluginCommand(const TCHAR *pluginName, int commandID);
 
     void addInMenuFromPMIndex(int i);
-	HMENU setMenu(HMENU hMenu, const TCHAR *menuName);
+	HMENU setMenu(HMENU hMenu, const TCHAR *menuName, bool enablePluginAdmin = false);
 	bool getShortcutByCmdID(int cmdID, ShortcutKey *sk);
+	bool removeShortcutByCmdID(int cmdID);
 
 	void notify(const SCNotification *notification);
 	void relayNppMessages(UINT Message, WPARAM wParam, LPARAM lParam);
@@ -137,6 +138,7 @@ private:
 	bool _isDisabled = false;
 	IDAllocator _dynamicIDAlloc;
 	IDAllocator _markerAlloc;
+	bool _noMoreNotification = false;
 
 	void pluginCrashAlert(const TCHAR *pluginName, const TCHAR *funcSignature)
 	{

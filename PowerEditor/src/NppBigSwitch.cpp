@@ -107,7 +107,7 @@ LRESULT Notepad_plus_Window::runProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 				_notepad_plus_plus_core._pPublicInterface = this;
 				return _notepad_plus_plus_core.init(hwnd);
 			}
-			catch (std::exception ex)
+			catch (std::exception& ex)
 			{
 				::MessageBoxA(hwnd, ex.what(), "Exception On WM_CREATE", MB_OK);
 				exit(-1);
@@ -124,7 +124,7 @@ LRESULT Notepad_plus_Window::runProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 }
 
 // Used by NPPM_GETFILENAMEATCURSOR
-int CharacterIs(TCHAR c, TCHAR *any)
+int CharacterIs(TCHAR c, const TCHAR *any)
 {
 	int i;
 	for (i = 0; any[i] != 0; i++)
@@ -458,6 +458,11 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case NPPM_INTERNAL_DOCORDERCHANGED :
 		{
+			if (_pFileSwitcherPanel)
+			{
+				_pFileSwitcherPanel->updateTabOrder();
+			}
+			
 			BufferID id = _pEditView->getCurrentBufferID();
 
 			// Notify plugins that current file is about to be closed
@@ -553,9 +558,9 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			{
 				case COPYDATA_PARAMS:
 				{
-					CmdLineParams *cmdLineParam = static_cast<CmdLineParams *>(pCopyData->lpData); // CmdLineParams object from another instance
-					auto cmdLineParamsSize = static_cast<size_t>(pCopyData->cbData);  // CmdLineParams size from another instance
-					if (sizeof(CmdLineParams) == cmdLineParamsSize) // make sure the structure is the same
+					const CmdLineParamsDTO *cmdLineParam = static_cast<const CmdLineParamsDTO *>(pCopyData->lpData); // CmdLineParams object from another instance
+					const DWORD cmdLineParamsSize = pCopyData->cbData;  // CmdLineParams size from another instance
+					if (sizeof(CmdLineParamsDTO) == cmdLineParamsSize) // make sure the structure is the same
 					{
 						pNppParam->setCmdlineParam(*cmdLineParam);
 					}
@@ -574,7 +579,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				case COPYDATA_FILENAMESA:
 				{
 					char *fileNamesA = static_cast<char *>(pCopyData->lpData);
-					CmdLineParams & cmdLineParams = pNppParam->getCmdLineParams();
+					const CmdLineParamsDTO & cmdLineParams = pNppParam->getCmdLineParams();
 					WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
 					const wchar_t *fileNamesW = wmc->char2wchar(fileNamesA, CP_ACP);
 					loadCommandlineParams(fileNamesW, &cmdLineParams);
@@ -584,7 +589,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				case COPYDATA_FILENAMESW:
 				{
 					wchar_t *fileNamesW = static_cast<wchar_t *>(pCopyData->lpData);
-					CmdLineParams & cmdLineParams = pNppParam->getCmdLineParams();
+					const CmdLineParamsDTO & cmdLineParams = pNppParam->getCmdLineParams();
 					loadCommandlineParams(fileNamesW, &cmdLineParams);
 					break;
 				}
@@ -618,7 +623,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		case NPPM_INTERNAL_SAVECURRENTSESSION:
 		{
 			NppParameters *nppParam = NppParameters::getInstance();
-			const NppGUI nppGui = nppParam->getNppGUI();
+			const NppGUI& nppGui = nppParam->getNppGUI();
 
 			if (nppGui._rememberLastSession && !nppGui._isCmdlineNosessionActivated)
 			{
@@ -626,6 +631,16 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				getCurrentOpenedFiles(currentSession, true);
 				nppParam->writeSession(currentSession);
 			}
+			return TRUE;
+		}
+
+		case NPPM_INTERNAL_SAVEBACKUP:
+		{
+			if (NppParameters::getInstance()->getNppGUI().isSnapshotMode())
+			{
+				MainFileManager->backupCurrentBuffer();
+			}
+
 			return TRUE;
 		}
 
@@ -693,6 +708,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			{
 				if (lstrlen(fileStr) >= int(wParam))
 				{
+					// Not message for users so no translation
 					::MessageBox(hwnd, TEXT("Allocated buffer size is not enough to copy the string."), TEXT("NPPM error"), MB_OK);
 					return FALSE;
 				}
@@ -714,6 +730,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			{
 				if (lstrlen(str) >= int(wParam))	//buffer too small
 				{
+					// Not message for users so no translation
 					::MessageBox(hwnd, TEXT("Allocated buffer size is not enough to copy the string."), TEXT("NPPM_GETCURRENTWORD error"), MB_OK);
 					return FALSE;
 				}
@@ -748,7 +765,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				// it's not a full file name so try to find the beginning and ending of it
 				int start;
 				int end;
-				TCHAR *delimiters;
+				const TCHAR *delimiters;
 
 				lineNumber = _pEditView->getCurrentLineNumber();
 				col = _pEditView->getCurrentColumnNumber();
@@ -770,6 +787,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 			if (lstrlen(str) >= int(wParam))	//buffer too small
 			{
+				// Not message for users so no translation
 				::MessageBox(hwnd, TEXT("Allocated buffer size is not enough to copy the string."), TEXT("NPPM_GETFILENAMEATCURSOR error"), MB_OK);
 				return FALSE;
 			}
@@ -797,6 +815,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			{
 				if (lstrlen(str) >= int(wParam))
 				{
+					// Not message for users so no translation
 					::MessageBox(hwnd, TEXT("Allocated buffer size is not enough to copy the string."), TEXT("NPPM_GETNPPDIRECTORY error"), MB_OK);
 					return FALSE;
 				}
@@ -1545,6 +1564,13 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			return TRUE;
 		}
 
+		case NPPM_INTERNAL_STOPMONITORING:
+		{
+			Buffer *buf = reinterpret_cast<Buffer *>(wParam);
+			monitoringStartOrStopAndUpdateUI(buf, false);
+			return TRUE;
+		}
+
 		case NPPM_INTERNAL_GETCHECKDOCOPT:
 		{
 			return (LRESULT)(pNppParam->getNppGUI())._fileAutoDetection;
@@ -1757,6 +1783,9 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					//User cancelled the shutdown
 					scnN.nmhdr.code = NPPN_CANCELSHUTDOWN;
 					_pluginsManager.notify(&scnN);
+					
+					if (isSnapshotMode)
+						::LockWindowUpdate(NULL);
 					return FALSE;
 				}
 
@@ -1820,6 +1849,13 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				//Sends WM_DESTROY, Notepad++ will end
 				if (message == WM_CLOSE)
 					::DestroyWindow(hwnd);
+
+				generic_string updaterFullPath = pNppParam->getWingupFullPath();
+				if (!updaterFullPath.empty())
+				{
+					Process updater(updaterFullPath.c_str(), pNppParam->getWingupParams().c_str(), pNppParam->getWingupDir().c_str());
+					updater.run();
+				}
 			}
 			return TRUE;
 		}
@@ -2251,16 +2287,22 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			return _pFileSwitcherPanel->isVisible();
 		}
 
-		case NPPM_GETAPPDATAPLUGINSALLOWED:
-		{
+		case NPPM_GETAPPDATAPLUGINSALLOWED: // if doLocal, it's always false - having doLocal environment cannot load plugins outside
+		{                                   // the presence of file "allowAppDataPlugins.xml" will be checked only when not doLocal
 			const TCHAR *appDataNpp = pNppParam->getAppDataNppDir();
-			if (appDataNpp[0])
+			if (appDataNpp[0]) // if not doLocal
 			{
 				generic_string allowAppDataPluginsPath(pNppParam->getNppPath());
 				PathAppend(allowAppDataPluginsPath, allowAppDataPluginsFile);
 				return ::PathFileExists(allowAppDataPluginsPath.c_str());
 			}
 			return FALSE;
+		}
+
+		case NPPM_REMOVESHORTCUTBYCMDID:
+		{
+			int cmdID = static_cast<int32_t>(wParam);
+			return _pluginsManager.removeShortcutByCmdID(cmdID);
 		}
 
 		//

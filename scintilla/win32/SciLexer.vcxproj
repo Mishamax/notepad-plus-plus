@@ -22,12 +22,13 @@
     <ProjectGuid>{FBE04237-9C7B-4973-9C60-505975998B39}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>SciLexer</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Debug|Win32'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -52,13 +53,18 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <LinkIncremental>false</LinkIncremental>
-    <NuGetPackageImportStamp>ba6a8a13</NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Release|Win32'">
+    <OutDir>..\bin\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Release|x64'">
+    <OutDir>..\bin64\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <PreprocessorDefinitions>WIN32;SCI_LEXER;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES;_CRT_SECURE_NO_DEPRECATE;_WINDOWS;_USRDLL;SCI_OWNREGEX;SCI_NAMESPACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include;..\src;..\lexlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include;..\src;..\lexlib;%BOOST_ROOT%</AdditionalIncludeDirectories>
       <BrowseInformation>true</BrowseInformation>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -67,23 +73,27 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>imm32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>imm32.lib;libboost_regex-vc141-mt-s-x32-1_68.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Debug|Win32'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <AdditionalLibraryDirectories>%BOOST_ROOT%\bin.v2\libs\regex\build\msvc-14.1\debug\link-static\runtime-link-static\threading-multi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <AdditionalLibraryDirectories>%BOOST_ROOT%\bin.v2\libs\regex\build\msvc-14.1\debug\link-static\runtime-link-static\threading-multi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Release|Win32'">
@@ -91,22 +101,32 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>%BOOST_ROOT%\bin.v2\libs\regex\build\msvc-14.1\release\link-static\runtime-link-static\threading-multi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>copy ..\bin\SciLexer.dll ..\..\PowerEditor\bin\SciLexer.dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Release|x64'">
     <ClCompile>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>%BOOST_ROOT%\bin.v2\libs\regex\build\msvc-14.1\release\link-static\runtime-link-static\threading-multi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>copy ..\bin64\SciLexer.dll ..\..\PowerEditor\bin64\SciLexer.dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\lexers\*.cxx" />
@@ -127,19 +147,6 @@
   <ItemGroup>
     <ResourceCompile Include="..\win32\ScintRes.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\..\PowerEditor\visual.net\packages\boost.1.58.0.0\build\native\boost.targets" Condition="Exists('..\..\PowerEditor\visual.net\packages\boost.1.58.0.0\build\native\boost.targets')" />
-    <Import Project="..\..\PowerEditor\visual.net\packages\boost_regex-vc120.1.58.0.0\build\native\boost_regex-vc120.targets" Condition="Exists('..\..\PowerEditor\visual.net\packages\boost_regex-vc120.1.58.0.0\build\native\boost_regex-vc120.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\..\PowerEditor\visual.net\packages\boost.1.58.0.0\build\native\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\PowerEditor\visual.net\packages\boost.1.58.0.0\build\native\boost.targets'))" />
-    <Error Condition="!Exists('..\..\PowerEditor\visual.net\packages\boost_regex-vc120.1.58.0.0\build\native\boost_regex-vc120.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\PowerEditor\visual.net\packages\boost_regex-vc120.1.58.0.0\build\native\boost_regex-vc120.targets'))" />
-  </Target>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

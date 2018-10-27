@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <shlwapi.h>
+#include <cinttypes>
 #include "ScintillaEditView.h"
 #include "Parameters.h"
 #include "Sorters.h"
@@ -53,7 +54,6 @@ UserDefineDialog ScintillaEditView::_userDefineDlg;
 const int ScintillaEditView::_SC_MARGE_LINENUMBER = 0;
 const int ScintillaEditView::_SC_MARGE_SYBOLE = 1;
 const int ScintillaEditView::_SC_MARGE_FOLDER = 2;
-//const int ScintillaEditView::_SC_MARGE_MODIFMARKER = 3;
 
 WNDPROC ScintillaEditView::_scintillaDefaultProc = NULL;
 string ScintillaEditView::_defaultCharList = "";
@@ -96,7 +96,7 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 {TEXT("batch"),			TEXT("Batch"),				TEXT("Batch file"),										L_BATCH,		SCLEX_BATCH},
 {TEXT("ini"),			TEXT("ini"),				TEXT("MS ini file"),									L_INI,			SCLEX_PROPERTIES},
 {TEXT("nfo"),			TEXT("NFO"),				TEXT("MSDOS Style/ASCII Art"),							L_ASCII,		SCLEX_NULL},
-{TEXT("udf"),			TEXT("udf"),				TEXT("User Define File"),								L_USER,			SCLEX_USER},
+{TEXT("udf"),			TEXT("udf"),				TEXT("User Defined language file"),						L_USER,			SCLEX_USER},
 {TEXT("asp"),			TEXT("ASP"),				TEXT("Active Server Pages script file"),				L_ASP,			SCLEX_HTML},
 {TEXT("sql"),			TEXT("SQL"),				TEXT("Structured Query Language file"),					L_SQL,			SCLEX_SQL},
 {TEXT("vb"),			TEXT("Visual Basic"),		TEXT("Visual Basic file"),								L_VB,			SCLEX_VB},
@@ -174,10 +174,6 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 //const int MASK_GREEN = 0x00FF00;
 //const int MASK_BLUE  = 0x0000FF;
 
-#define SCINTILLA_SIGNER_DISPLAY_NAME TEXT("Notepad++")
-#define SCINTILLA_SIGNER_SUBJECT TEXT("C=FR, S=Ile-de-France, L=Saint Cloud, O=\"Notepad++\", CN=\"Notepad++\"")
-#define SCINTILLA_SIGNER_KEY_ID TEXT("42C4C5846BB675C74E2B2C90C69AB44366401093")
-
 
 int getNbDigits(int aNum, int base)
 {
@@ -207,9 +203,11 @@ HMODULE loadSciLexerDll()
 {
 	generic_string sciLexerPath = getSciLexerFullPathName(moduleFileName, 1024);
 
-	// Library verification disabled
+	// Do not check dll signature if npp is running in debug mode
+	// This is helpful for developers to skip signature checking
+	// while analyzing issue or modifying the lexer dll
 #if 0
-	bool isOK = VerifySignedLibrary(sciLexerPath, SCINTILLA_SIGNER_KEY_ID, SCINTILLA_SIGNER_SUBJECT, SCINTILLA_SIGNER_DISPLAY_NAME, false, false);
+	bool isOK = VerifySignedLibrary(sciLexerPath, NPP_COMPONENT_SIGNER_KEY_ID, NPP_COMPONENT_SIGNER_SUBJECT, NPP_COMPONENT_SIGNER_DISPLAY_NAME, false, false);
 
 		if (!isOK)
 	{
@@ -643,6 +641,8 @@ void ScintillaEditView::setXmlLexer(LangType type)
 			execute(SCI_SETKEYWORDS, i, reinterpret_cast<LPARAM>(TEXT("")));
 
         makeStyle(type);
+
+		execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("lexer.xml.allow.scripts"), reinterpret_cast<LPARAM>("0"));
 	}
 	else if ((type == L_HTML) || (type == L_PHP) || (type == L_ASP) || (type == L_JSP))
 	{
@@ -841,20 +841,19 @@ void ScintillaEditView::setUserLexer(const TCHAR *userLangName)
 		}
 	}
 
- 	char intBuffer[15];
-	char nestingBuffer[] = "userDefine.nesting.00";
+ 	char intBuffer[32];
 
-    itoa(userLangContainer->_forcePureLC, intBuffer, 10);
+	sprintf(intBuffer, "%d", userLangContainer->_forcePureLC);
 	execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("userDefine.forcePureLC"), reinterpret_cast<LPARAM>(intBuffer));
 
-    itoa(userLangContainer->_decimalSeparator, intBuffer, 10);
+	sprintf(intBuffer, "%d", userLangContainer->_decimalSeparator);
 	execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("userDefine.decimalSeparator"), reinterpret_cast<LPARAM>(intBuffer));
 
 	// at the end (position SCE_USER_KWLIST_TOTAL) send id values
-	itoa(reinterpret_cast<int>(userLangContainer->getName()), intBuffer, 10); // use numeric value of TCHAR pointer
+	sprintf(intBuffer, "%" PRIuPTR, reinterpret_cast<uintptr_t>(userLangContainer->getName())); // use numeric value of TCHAR pointer
 	execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("userDefine.udlName"), reinterpret_cast<LPARAM>(intBuffer));
 
-    itoa(reinterpret_cast<int>(_currentBufferID), intBuffer, 10); // use numeric value of BufferID pointer
+	sprintf(intBuffer, "%" PRIuPTR, reinterpret_cast<uintptr_t>(_currentBufferID)); // use numeric value of BufferID pointer
     execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("userDefine.currentBufferID"), reinterpret_cast<LPARAM>(intBuffer));
 
 	for (int i = 0 ; i < SCE_USER_STYLE_TOTAL_STYLES ; ++i)
@@ -864,9 +863,10 @@ void ScintillaEditView::setUserLexer(const TCHAR *userLangName)
 		if (style._styleID == STYLE_NOT_USED)
 			continue;
 
-		if (i < 10)	itoa(i, (nestingBuffer+20), 10);
-		else		itoa(i, (nestingBuffer+19), 10);
-		execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>(nestingBuffer), reinterpret_cast<LPARAM>(itoa(style._nesting, intBuffer, 10)));
+		char nestingBuffer[32];
+		sprintf(nestingBuffer, "userDefine.nesting.%02d", i );
+		sprintf(intBuffer, "%d", style._nesting);
+		execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>(nestingBuffer), reinterpret_cast<LPARAM>(intBuffer));
 
 		setStyle(style);
 	}
@@ -1759,7 +1759,7 @@ void ScintillaEditView::saveCurrentPos()
 	//Save data so, that the current topline becomes visible again after restoring.
 	int32_t displayedLine = static_cast<int32_t>(execute(SCI_GETFIRSTVISIBLELINE));
 	int32_t docLine = static_cast<int32_t>(execute(SCI_DOCLINEFROMVISIBLE, displayedLine));		//linenumber of the line displayed in the top
-	//int offset = displayedLine - execute(SCI_VISIBLEFROMDOCLINE, docLine);		//use this to calc offset of wrap. If no wrap this should be zero
+	int32_t offset = displayedLine - static_cast<int32_t>(execute(SCI_VISIBLEFROMDOCLINE, docLine));		//use this to calc offset of wrap. If no wrap this should be zero
 
 	Buffer * buf = MainFileManager->getBufferByID(_currentBufferID);
 
@@ -1771,6 +1771,7 @@ void ScintillaEditView::saveCurrentPos()
 	pos._xOffset = static_cast<int>(execute(SCI_GETXOFFSET));
 	pos._selMode = static_cast<int32_t>(execute(SCI_GETSELECTIONMODE));
 	pos._scrollWidth = static_cast<int32_t>(execute(SCI_GETSCROLLWIDTH));
+	pos._offset = offset;
 
 	buf->setPosition(pos, this);
 }
@@ -1792,8 +1793,11 @@ void ScintillaEditView::restoreCurrentPos()
 		execute(SCI_SETXOFFSET, pos._xOffset);
 	}
 	execute(SCI_CHOOSECARETX); // choose current x position
+	execute(SCI_ENSUREVISIBLE); //Make sure the caret is visible (this will also fix wrapping problems)
 
 	int lineToShow = static_cast<int32_t>(execute(SCI_VISIBLEFROMDOCLINE, pos._firstVisibleLine));
+	lineToShow += pos._offset;
+
 	scroll(0, lineToShow);
 }
 
@@ -3308,7 +3312,7 @@ void ScintillaEditView::setTabSettings(Lang *lang)
 		if (lang->_langID == L_JAVASCRIPT)
 		{
 			Lang *ljs = _pParameter->getLangFromID(L_JS);
-			execute(SCI_SETTABWIDTH, ljs->_tabSize);
+			execute(SCI_SETTABWIDTH, ljs->_tabSize > 0 ? ljs->_tabSize : lang->_tabSize);
 			execute(SCI_SETUSETABS, !ljs->_isTabReplacedBySpace);
 			return;
 		}
@@ -3318,7 +3322,7 @@ void ScintillaEditView::setTabSettings(Lang *lang)
     else
     {
         const NppGUI & nppgui = _pParameter->getNppGUI();
-        execute(SCI_SETTABWIDTH, nppgui._tabSize);
+        execute(SCI_SETTABWIDTH, nppgui._tabSize  > 0 ? nppgui._tabSize : lang->_tabSize);
 		execute(SCI_SETUSETABS, !nppgui._tabReplacedBySpace);
     }
 }

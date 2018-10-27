@@ -242,7 +242,7 @@ public :
 		_ppEditView = ppEditView;
 	};
 
-	virtual void create(int dialogID, bool isRTL = false);
+	virtual void create(int dialogID, bool isRTL = false, bool msgDestParent = true);
 	
 	void initOptionsFromDlg();
 
@@ -358,6 +358,7 @@ private :
 	std::vector<Finder *> _findersOfFinder;
 
 	HWND _shiftTrickUpTip = nullptr;
+	HWND _2ButtonsTip = nullptr;
 
 
 	bool _isRTL;

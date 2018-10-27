@@ -68,9 +68,11 @@ PowerEditor/bin/functionList.xml
 PowerEditor/bin/shortcuts.xml
 PowerEditor/bin/userDefineLang.xml
 PowerEditor/bin/backup/
-PowerEditor/bin/localization
+PowerEditor/bin/localization/
 PowerEditor/bin/plugins/
+PowerEditor/bin/updater/
 PowerEditor/bin64/
+PowerEditor/installer/bin/wingup/
 PowerEditor/installer/build/
 PowerEditor/installer/minimalist/
 PowerEditor/installer/minimalist64/

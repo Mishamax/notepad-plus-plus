@@ -114,8 +114,8 @@ void SmartHighlighter::highlightView(ScintillaEditView * pHighlightView, Scintil
 
 	const NppGUI & nppGUI = NppParameters::getInstance()->getNppGUI();
 
-	// If nothing selected, dont mark anything
-	if (pHighlightView->execute(SCI_GETSELECTIONEMPTY) == 1)
+	// If nothing selected or smart highlighting disabled, don't mark anything
+	if ((!nppGUI._enableSmartHilite) || (pHighlightView->execute(SCI_GETSELECTIONEMPTY) == 1))
 	{
 		if (nppGUI._smartHiliteOnAnotherView && unfocusView && unfocusView->isVisible()
 			&& unfocusView->getCurrentBufferID() != pHighlightView->getCurrentBufferID())
@@ -127,6 +127,7 @@ void SmartHighlighter::highlightView(ScintillaEditView * pHighlightView, Scintil
 
 	auto curPos = pHighlightView->execute(SCI_GETCURRENTPOS);
 	auto range = pHighlightView->getSelection();
+	int textlen = range.cpMax - range.cpMin + 1;
 
 	// Determine mode for SmartHighlighting
 	bool isWordOnly = true;
@@ -153,8 +154,14 @@ void SmartHighlighter::highlightView(ScintillaEditView * pHighlightView, Scintil
 		if (wordStart == wordEnd || wordStart != range.cpMin || wordEnd != range.cpMax)
 			return;
 	}
-
-	int textlen = range.cpMax - range.cpMin + 1;
+	else
+	{
+		auto line = pHighlightView->execute(SCI_LINEFROMPOSITION, curPos);
+		auto lineLength = pHighlightView->execute(SCI_LINELENGTH, line);
+		if (textlen > lineLength)
+			return;
+	}
+	
 	char * text2Find = new char[textlen];
 	pHighlightView->getSelectedText(text2Find, textlen, false); //do not expand selection (false)
 

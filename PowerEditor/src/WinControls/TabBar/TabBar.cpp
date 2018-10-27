@@ -132,7 +132,7 @@ void TabBar::getCurrentTitle(TCHAR *title, int titleLen)
 }
 
 
-void TabBar::setFont(TCHAR *fontName, int fontSize)
+void TabBar::setFont(const TCHAR *fontName, int fontSize)
 {
 	if (_hFont)
 		::DeleteObject(_hFont);
@@ -634,7 +634,13 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 		{
 			if (_mightBeDragging && !_isDragging)
 			{
-				if (++_dragCount > 2)
+				// Grrr! Who has stolen focus and eaten the WM_LBUTTONUP?!
+				if (GetKeyState(VK_LBUTTON) >= 0)
+				{
+					_mightBeDragging = false;
+					_dragCount = 0;
+				}
+				else if (++_dragCount > 2)
 				{
 					int tabFocused = static_cast<int32_t>(::SendMessage(_hSelf, TCM_GETCURFOCUS, 0, 0));
 					int tabSelected = static_cast<int32_t>(::SendMessage(_hSelf, TCM_GETCURSEL, 0, 0));
@@ -663,6 +669,7 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 			if (_isDragging)
 			{
                 exchangeItemData(p);
+				::CallWindowProc(_tabBarDefaultProc, hwnd, WM_LBUTTONDOWN, wParam, lParam);
 
 				// Get cursor position of "Screen"
 				// For using the function "WindowFromPoint" afterward!!!
@@ -859,7 +866,6 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT *pDrawItemStruct)
 	if (nTab < 0)
 	{
 		::MessageBox(NULL, TEXT("nTab < 0"), TEXT(""), MB_OK);
-		//return ::CallWindowProc(_tabBarDefaultProc, hwnd, Message, wParam, lParam);
 	}
 	bool isSelected = (nTab == ::SendMessage(_hSelf, TCM_GETCURSEL, 0, 0));
 
@@ -1182,9 +1188,6 @@ void TabBarPlus::exchangeTabItemData(int oldTab, int newTab)
 
 	// Tell Notepad_plus to notifiy plugins that a D&D operation was done (so doc index has been changed)
 	::SendMessage(_hParent, NPPM_INTERNAL_DOCORDERCHANGED, 0, oldTab);
-
-	//2. set to focus
-	setActiveTab(newTab);
 }
 
 void TabBarPlus::exchangeItemData(POINT point)

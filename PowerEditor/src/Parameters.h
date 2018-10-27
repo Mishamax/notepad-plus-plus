@@ -91,7 +91,6 @@ enum ChangeDetect {cdDisabled=0, cdEnabled=1, cdAutoUpdate=2, cdGo2end=3, cdAuto
 enum BackupFeature {bak_none = 0, bak_simple = 1, bak_verbose = 2};
 enum OpenSaveDirSetting {dir_followCurrent = 0, dir_last = 1, dir_userDef = 2};
 enum MultiInstSetting {monoInst = 0, multiInstOnSession = 1, multiInst = 2};
-//enum CloudChoice {noCloud = 0, dropbox = 1, oneDrive = 2, googleDrive = 3};
 
 const int LANG_INDEX_INSTR = 0;
 const int LANG_INDEX_INSTR2 = 1;
@@ -135,6 +134,7 @@ struct Position
 	int _xOffset = 0;
 	int _selMode = 0;
 	int _scrollWidth = 1;
+	int _offset = 0;
 };
 
 
@@ -163,7 +163,7 @@ private:
 
 struct sessionFileInfo : public Position
 {
-	sessionFileInfo(const TCHAR *fn, const TCHAR *ln, int encoding, Position pos, const TCHAR *backupFilePath, int originalFileLastModifTimestamp, const MapPosition & mapPos) :
+	sessionFileInfo(const TCHAR *fn, const TCHAR *ln, int encoding, Position pos, const TCHAR *backupFilePath, FILETIME originalFileLastModifTimestamp, const MapPosition & mapPos) :
 		_encoding(encoding), Position(pos), _originalFileLastModifTimestamp(originalFileLastModifTimestamp), _mapPos(mapPos)
 	{
 		if (fn) _fileName = fn;
@@ -180,7 +180,7 @@ struct sessionFileInfo : public Position
 	int	_encoding = -1;
 
 	generic_string _backupFilePath;
-	time_t _originalFileLastModifTimestamp = 0;
+	FILETIME _originalFileLastModifTimestamp = {};
 
 	MapPosition _mapPos;
 };
@@ -222,6 +222,7 @@ struct CmdLineParams
 	generic_string _localizationPath;
 	generic_string _easterEggName;
 	unsigned char _quoteType = '\0';
+	int _ghostTypingSpeed = -1; // -1: initial value  1: slow  2: fast  3: speed of light
 
 	CmdLineParams()
 	{
@@ -232,6 +233,38 @@ struct CmdLineParams
 	bool isPointValid() const
 	{
 		return _isPointXValid && _isPointYValid;
+	}
+};
+
+// A POD class to send CmdLineParams through WM_COPYDATA and to Notepad_plus::loadCommandlineParams
+struct CmdLineParamsDTO
+{
+	bool _isReadOnly;
+	bool _isNoSession;
+	bool _isSessionFile;
+	bool _isRecursive;
+
+	int _line2go;
+	int _column2go;
+	int _pos2go;
+
+	LangType _langType;
+
+	static CmdLineParamsDTO FromCmdLineParams(const CmdLineParams& params)
+	{
+		CmdLineParamsDTO dto;
+		dto._isReadOnly = params._isReadOnly;
+		dto._isNoSession = params._isNoSession;
+		dto._isSessionFile = params._isSessionFile;
+		dto._isRecursive = params._isRecursive;
+
+		dto._line2go = params._line2go;
+		dto._column2go = params._column2go;
+		dto._pos2go = params._pos2go;
+		
+		dto._langType = params._langType;
+
+		return dto;
 	}
 };
 
@@ -1091,6 +1124,8 @@ struct FindHistory final
 	enum searchMode{normal, extended, regExpr};
 	enum transparencyMode{none, onLossingFocus, persistant};
 
+	bool _isSearch2ButtonsMode = false;
+
 	int _nbMaxFindHistoryPath    = 10;
 	int _nbMaxFindHistoryFilter  = 10;
 	int _nbMaxFindHistoryFind    = 10;
@@ -1127,15 +1162,15 @@ friend class NppParameters;
 public:
 	struct LocalizationDefinition
 	{
-		wchar_t *_langName;
-		wchar_t *_xmlFileName;
+		const wchar_t *_langName;
+		const wchar_t *_xmlFileName;
 	};
 
 	bool addLanguageFromXml(std::wstring xmlFullPath);
 	std::wstring getLangFromXmlFileName(const wchar_t *fn) const;
 
 	std::wstring getXmlFilePathFromLangName(const wchar_t *langName) const;
-	bool switchToLang(wchar_t *lang2switch) const;
+	bool switchToLang(const wchar_t *lang2switch) const;
 
 	size_t size() const
 	{
@@ -1421,11 +1456,11 @@ public:
 
 	void removeTransparent(HWND hwnd);
 
-	void setCmdlineParam(const CmdLineParams & cmdLineParams)
+	void setCmdlineParam(const CmdLineParamsDTO & cmdLineParams)
 	{
 		_cmdLineParams = cmdLineParams;
 	}
-	CmdLineParams & getCmdLineParams() {return _cmdLineParams;};
+	const CmdLineParamsDTO & getCmdLineParams() const {return _cmdLineParams;};
 
 	void setFileSaveDlgFilterIndex(int ln) {_fileSaveDlgFilterIndex = ln;};
 	int getFileSaveDlgFilterIndex() const {return _fileSaveDlgFilterIndex;};
@@ -1637,7 +1672,7 @@ private:
 	ExternalLangContainer *_externalLangArray[NB_MAX_EXTERNAL_LANG];
 	int _nbExternalLang = 0;
 
-	CmdLineParams _cmdLineParams;
+	CmdLineParamsDTO _cmdLineParams;
 
 	int _fileSaveDlgFilterIndex = -1;
 
@@ -1711,6 +1746,19 @@ private:
 
 	generic_string _initialCloudChoice;
 
+	generic_string _wingupFullPath;
+	generic_string _wingupParams;
+	generic_string _wingupDir;
+
+public:
+	generic_string getWingupFullPath() const { return _wingupFullPath; };
+	generic_string getWingupParams() const { return _wingupParams; };
+	generic_string getWingupDir() const { return _wingupDir; };
+	void setWingupFullPath(const generic_string& val2set) { _wingupFullPath = val2set; };
+	void setWingupParams(const generic_string& val2set) { _wingupParams = val2set; };
+	void setWingupDir(const generic_string& val2set) { _wingupDir = val2set; };
+
+private:
 	void getLangKeywordsFromXmlTree();
 	bool getUserParametersFromXmlTree();
 	bool getUserStylersFromXmlTree();
@@ -1769,4 +1817,5 @@ private:
 	int getCmdIdFromMenuEntryItemName(HMENU mainMenuHadle, generic_string menuEntryName, generic_string menuItemName); // return -1 if not found
 	int getPluginCmdIdFromMenuEntryItemName(HMENU pluginsMenu, generic_string pluginName, generic_string pluginCmdName); // return -1 if not found
 	winVer getWindowsVersion();
+
 };

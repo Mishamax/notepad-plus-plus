@@ -115,6 +115,31 @@ struct VisibleGUIConf final
 	}
 };
 
+struct QuoteParams
+{
+	enum Speed { slow = 0, rapid, speedOfLight };
+
+	QuoteParams() {};
+	QuoteParams(const wchar_t* quoter, Speed speed, bool shouldBeTrolling, int encoding, LangType lang, const wchar_t* quote) :
+		_quoter(quoter), _speed(speed), _shouldBeTrolling(shouldBeTrolling), _encoding(encoding), _lang(lang), _quote(quote) {}
+
+	void reset() {
+		_quoter = nullptr;
+		_speed = rapid;
+		_shouldBeTrolling = false;
+		_encoding = SC_CP_UTF8;
+		_lang = L_TEXT;
+		_quote = nullptr;
+	};
+
+	const wchar_t* _quoter = nullptr;
+	Speed _speed = rapid;
+	bool _shouldBeTrolling = false;
+	int _encoding = SC_CP_UTF8;
+	LangType _lang = L_TEXT;
+	const wchar_t* _quote = nullptr;
+};
+
 class FileDialog;
 class Notepad_plus_Window;
 class AnsiCharPanel;
@@ -124,7 +149,7 @@ class ProjectPanel;
 class DocumentMap;
 class FunctionListPanel;
 class FileBrowser;
-
+struct QuoteParams;
 
 class Notepad_plus final
 {
@@ -149,7 +174,7 @@ public:
 	//! \name File Operations
 	//@{
 	//The doXXX functions apply to a single buffer and dont need to worry about views, with the excpetion of doClose, since closing one view doesnt have to mean the document is gone
-	BufferID doOpen(const generic_string& fileName, bool isRecursive = false, bool isReadOnly = false, int encoding = -1, const TCHAR *backupFileName = NULL, time_t fileNameTimestamp = 0);
+	BufferID doOpen(const generic_string& fileName, bool isRecursive = false, bool isReadOnly = false, int encoding = -1, const TCHAR *backupFileName = NULL, FILETIME fileNameTimestamp = {});
 	bool doReload(BufferID id, bool alert = true);
 	bool doSave(BufferID, const TCHAR * filename, bool isSaveCopy = false);
 	void doClose(BufferID, int whichOne, bool doDeleteBackup = false);
@@ -224,9 +249,9 @@ public:
 		return _pEditView->getCurrentBuffer();
 	}
 	void launchDocumentBackupTask();
-	int getQuoteIndexFrom(const char *quoter) const;
+	int getQuoteIndexFrom(const wchar_t* quoter) const;
 	void showQuoteFromIndex(int index) const;
-	void showQuote(const char *quote, const char *quoter, bool doTrolling) const;
+	void showQuote(const QuoteParams* quote) const;
 
 
 private:
@@ -309,6 +334,7 @@ private:
 	Macro _macro;
 	bool _recordingMacro = false;
 	bool _playingBackMacro = false;
+	bool _recordingSaved = false;
 	RunMacroDlg _runMacroDlg;
 
 	// For conflict detection when saving Macros or RunCommands
@@ -546,7 +572,12 @@ private:
 	bool dumpFiles(const TCHAR * outdir, const TCHAR * fileprefix = TEXT(""));	//helper func
 	void drawTabbarColoursFromStylerArray();
 
-	void loadCommandlineParams(const TCHAR * commandLine, CmdLineParams * pCmdParams);
+	void loadCommandlineParams(const TCHAR * commandLine, const CmdLineParams * pCmdParams)
+	{
+		const CmdLineParamsDTO dto = CmdLineParamsDTO::FromCmdLineParams(*pCmdParams);
+		loadCommandlineParams(commandLine, &dto);
+	}
+	void loadCommandlineParams(const TCHAR * commandLine, const CmdLineParamsDTO * pCmdParams);
 	bool noOpenedDoc() const;
 	bool goToPreviousIndicator(int indicID2Search, bool isWrap = true) const;
 	bool goToNextIndicator(int indicID2Search, bool isWrap = true) const;
@@ -587,6 +618,8 @@ private:
 		Buffer *_buffer = nullptr;
 		HWND _nppHandle = nullptr;
 	};
+
+	void monitoringStartOrStopAndUpdateUI(Buffer* pBuf, bool isStarting);
 };
 
 
