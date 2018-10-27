@@ -39,7 +39,7 @@
 #include "localization.h"
 #include "Processus.h"
 #include "PluginsManager.h"
-#include "md5.h"
+#include "sha-256.h"
 #include "verifySignedFile.h"
 #include "LongRunningOperation.h"
 
@@ -505,10 +505,36 @@ DWORD WINAPI PluginsAdminDlg::launchPluginInstallerThread(void* params)
 		PathAppend(installedPluginPath, lwp->_pluginUpdateInfo->_folderName + TEXT(".dll"));
 
 		// check installed id to prevent from MITMA
-		MD5 md5;
-		char *md5Result = md5.digestFile(ws2s(installedPluginPath).c_str());
+		char sha2hashStr[65] = { '\0' };
+		std::string content = getFileContent(installedPluginPath.c_str());
+		if (content.empty())
+		{
+			// Remove installed plugin
+			NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+			pNativeSpeaker->messageBox("PluginBuiltWronglyCannotFound",
+				NULL,
+				TEXT("The plugin package is built wrongly. This plugin will be uninstalled."),
+				TEXT("Plugin cannot be found"),
+				MB_OK | MB_APPLMODAL,
+				0,
+				lwp->_pluginUpdateInfo->_displayName.c_str());
 
-		if (ws2s(lwp->_pluginUpdateInfo->_id) == md5Result)
+			deleteFileOrFolder(installedPluginFolder);
+			return FALSE;
+		}
+		else
+		{
+			uint8_t sha2hash[32];
+			calc_sha_256(sha2hash, reinterpret_cast<const uint8_t*>(content.c_str()), content.length());
+			
+			for (size_t i = 0; i < 32; i++)
+			{
+				sprintf(sha2hashStr + i * 2, "%02x", sha2hash[i]);
+			}
+		}
+		string s = ws2s(lwp->_pluginUpdateInfo->_id);
+		std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+		if (s == sha2hashStr)
 		{
 			// Critical section
 			WaitForSingleObject(lwp->_mutex, INFINITE);
@@ -526,6 +552,13 @@ DWORD WINAPI PluginsAdminDlg::launchPluginInstallerThread(void* params)
 			int index = lwp->_pPluginsManager->loadPlugin(installedPluginPath.c_str(), dll2Remove);
 			lwp->_pPluginsManager->addInMenuFromPMIndex(index);
 
+			// Notify plugin that Notepad++ is ready
+			SCNotification scnN;
+			scnN.nmhdr.code = NPPN_READY;
+			scnN.nmhdr.hwndFrom = lwp->_hwnd;
+			scnN.nmhdr.idFrom = 0;
+			lwp->_pPluginsManager->notify(index, &scnN);
+
 			// End of Critical section
 			ReleaseMutex(lwp->_mutex);
 		}
@@ -536,7 +569,7 @@ DWORD WINAPI PluginsAdminDlg::launchPluginInstallerThread(void* params)
 			pNativeSpeaker->messageBox("PluginIdNotMatchedWillBeRemoved",
 				NULL,
 				TEXT("The plugin \"$STR_REPLACE$\" ID is not correct. This plugin will be uninstalled."),
-				TEXT("Plugin ID missmathed"),
+				TEXT("Plugin ID mismathed"),
 				MB_OK | MB_APPLMODAL,
 				0,
 				lwp->_pluginUpdateInfo->_displayName.c_str());
@@ -583,11 +616,10 @@ bool PluginsAdminDlg::installPlugins()
 		lwp->_updaterDir = _updaterDir;
 		lwp->_updaterFullPath = _updaterFullPath;
 		lwp->_updaterParams = updaterParams;
+		lwp->_hwnd = _hSelf;
 		lwp->_mutex = mutex;
 
 		_lwps.push_back(lwp);
-
-		//ReleaseMutex(mutex);
 
 		HANDLE hThread = ::CreateThread(NULL, 0, launchPluginInstallerThread, lwp, 0, NULL);
 		::CloseHandle(hThread);
@@ -779,13 +811,22 @@ PluginUpdateInfo::PluginUpdateInfo(const generic_string& fullFilePath, const gen
 	_fullFilePath = fullFilePath;
 	_displayName = filename;
 
+	std::string content = getFileContent(fullFilePath.c_str());
+	if (content.empty())
+		return;
+
+	uint8_t sha2hash[32];
+	calc_sha_256(sha2hash, reinterpret_cast<const uint8_t*>(content.c_str()), content.length());
+	char sha2hashStr[65] = {'\0'};
+
+	for (size_t i = 0; i < 32; i++)
+	{
+		sprintf(sha2hashStr + i*2, "%02x", sha2hash[i]);
+	}
+
 	WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
-	const char *path = wmc->wchar2char(fullFilePath.c_str(), CP_ACP);
-	MD5 md5;
-	_id = wmc->char2wchar(md5.digestFile(path), CP_ACP);
-
+	_id = wmc->char2wchar(sha2hashStr, CP_ACP);
 	_version.setVersionFrom(fullFilePath);
-
 }
 
 typedef const char * (__cdecl * PFUNCGETPLUGINLIST)();
