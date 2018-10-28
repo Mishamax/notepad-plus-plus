@@ -124,7 +124,14 @@
       <AdditionalManifestFiles>..\src\dpiAware.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <PostBuildEvent>
-      <Command />
+      <Command>
+copy ..\src\langs.model.xml "$(Configuration)\langs.model.xml"
+copy ..\src\stylers.model.xml "$(Configuration)\stylers.model.xml"
+copy ..\src\shortcuts.xml "$(Configuration)\shortcuts.xml"
+copy ..\src\functionList.xml "$(Configuration)\functionList.xml"
+copy ..\src\contextMenu.xml "$(Configuration)\contextMenu.xml"
+copy ..\src\userDefineLang.xml "$(Configuration)\userDefineLang.xml"
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Debug|x64'">
@@ -158,9 +165,16 @@
     <Manifest>
       <AdditionalManifestFiles>..\src\dpiAware.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
+    <PostBuildEvent />
     <PostBuildEvent>
       <Command>
-      </Command>
+copy ..\src\langs.model.xml "$(Platform)\$(Configuration)\langs.model.xml"
+copy ..\src\stylers.model.xml "$(Platform)\$(Configuration)\stylers.model.xml"
+copy ..\src\shortcuts.xml "$(Platform)\$(Configuration)\shortcuts.xml"
+copy ..\src\functionList.xml "$(Platform)\$(Configuration)\functionList.xml"
+copy ..\src\contextMenu.xml "$(Platform)\$(Configuration)\contextMenu.xml"
+copy ..\src\userDefineLang.xml "$(Platform)\$(Configuration)\userDefineLang.xml"
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Release|Win32'">

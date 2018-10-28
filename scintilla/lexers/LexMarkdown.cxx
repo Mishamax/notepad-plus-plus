@@ -201,6 +201,9 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
 		initStyle = styler.StyleAt(startPos);
 	}
 
+	// Do not leak URL highlighting onto the next line
+	if (initStyle > SCE_MARKDOWN_CODEBK)
+		initStyle = SCE_MARKDOWN_DEFAULT;
 
     StyleContext sc(startPos, length, initStyle, styler);
 
