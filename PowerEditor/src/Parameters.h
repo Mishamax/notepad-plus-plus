@@ -893,7 +893,7 @@ struct NppGUI final
 struct ScintillaViewParams
 {
 	bool _lineNumberMarginShow = true;
-	bool _bookMarkMarginShow = false;
+	bool _bookMarkMarginShow = true;
 	folderStyle  _folderStyle = FOLDER_STYLE_NONE; //"simple", "arrow", "circle", "box" and "none"
 	lineWrapMethod _lineWrapMethod = LINEWRAP_ALIGNED;
 	bool _foldMarginShow = false;
