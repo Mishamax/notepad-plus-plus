@@ -611,7 +611,7 @@ void Accelerator::updateFullMenu() {
 	::DrawMenuBar(_hMenuParent);
 }
 
-void Accelerator::updateMenuItemByCommand(CommandShortcut csc)
+void Accelerator::updateMenuItemByCommand(const CommandShortcut& csc)
 {
 	int cmdID = csc.getID();
 	
@@ -664,14 +664,155 @@ recordedMacroStep::recordedMacroStep(int iMessage, uptr_t wParam, uptr_t lParam,
 	}
 }
 
+// code comes from Scintilla's Editor.cxx:
+// void Editor::NotifyMacroRecord(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
+bool recordedMacroStep::isMacroable() const
+{
+	// Enumerates all macroable messages
+	switch (_message)
+	{
+		case SCI_REPLACESEL: // (<unused>, const char *text)
+		case SCI_ADDTEXT:    // (int length, const char *s)
+		case SCI_INSERTTEXT: // (int pos, const char *text)
+		case SCI_APPENDTEXT: // (int length, const char *s)
+		case SCI_SEARCHNEXT: // (int searchFlags, const char *text)
+		case SCI_SEARCHPREV: // (int searchFlags, const char *text)
+		{
+			if (_macroType == mtUseSParameter)
+				return true;
+			else
+				return false;
+		}
+
+		case SCI_GOTOLINE:   // (int line)
+		case SCI_GOTOPOS:    // (int position)
+		case SCI_SETSELECTIONMODE:  // (int mode)
+		case SCI_CUT:
+		case SCI_COPY:
+		case SCI_PASTE:
+		case SCI_CLEAR:
+		case SCI_CLEARALL:
+		case SCI_SELECTALL:
+		case SCI_SEARCHANCHOR:
+		case SCI_LINEDOWN:
+		case SCI_LINEDOWNEXTEND:
+		case SCI_PARADOWN:
+		case SCI_PARADOWNEXTEND:
+		case SCI_LINEUP:
+		case SCI_LINEUPEXTEND:
+		case SCI_PARAUP:
+		case SCI_PARAUPEXTEND:
+		case SCI_CHARLEFT:
+		case SCI_CHARLEFTEXTEND:
+		case SCI_CHARRIGHT:
+		case SCI_CHARRIGHTEXTEND:
+		case SCI_WORDLEFT:
+		case SCI_WORDLEFTEXTEND:
+		case SCI_WORDRIGHT:
+		case SCI_WORDRIGHTEXTEND:
+		case SCI_WORDPARTLEFT:
+		case SCI_WORDPARTLEFTEXTEND:
+		case SCI_WORDPARTRIGHT:
+		case SCI_WORDPARTRIGHTEXTEND:
+		case SCI_WORDLEFTEND:
+		case SCI_WORDLEFTENDEXTEND:
+		case SCI_WORDRIGHTEND:
+		case SCI_WORDRIGHTENDEXTEND:
+		case SCI_HOME:
+		case SCI_HOMEEXTEND:
+		case SCI_LINEEND:
+		case SCI_LINEENDEXTEND:
+		case SCI_HOMEWRAP:
+		case SCI_HOMEWRAPEXTEND:
+		case SCI_LINEENDWRAP:
+		case SCI_LINEENDWRAPEXTEND:
+		case SCI_DOCUMENTSTART:
+		case SCI_DOCUMENTSTARTEXTEND:
+		case SCI_DOCUMENTEND:
+		case SCI_DOCUMENTENDEXTEND:
+		case SCI_STUTTEREDPAGEUP:
+		case SCI_STUTTEREDPAGEUPEXTEND:
+		case SCI_STUTTEREDPAGEDOWN:
+		case SCI_STUTTEREDPAGEDOWNEXTEND:
+		case SCI_PAGEUP:
+		case SCI_PAGEUPEXTEND:
+		case SCI_PAGEDOWN:
+		case SCI_PAGEDOWNEXTEND:
+		case SCI_EDITTOGGLEOVERTYPE:
+		case SCI_CANCEL:
+		case SCI_DELETEBACK:
+		case SCI_TAB:
+		case SCI_BACKTAB:
+		case SCI_FORMFEED:
+		case SCI_VCHOME:
+		case SCI_VCHOMEEXTEND:
+		case SCI_VCHOMEWRAP:
+		case SCI_VCHOMEWRAPEXTEND:
+		case SCI_VCHOMEDISPLAY:
+		case SCI_VCHOMEDISPLAYEXTEND:
+		case SCI_DELWORDLEFT:
+		case SCI_DELWORDRIGHT:
+		case SCI_DELWORDRIGHTEND:
+		case SCI_DELLINELEFT:
+		case SCI_DELLINERIGHT:
+		case SCI_LINECOPY:
+		case SCI_LINECUT:
+		case SCI_LINEDELETE:
+		case SCI_LINETRANSPOSE:
+		case SCI_LINEDUPLICATE:
+		case SCI_LOWERCASE:
+		case SCI_UPPERCASE:
+		case SCI_LINESCROLLDOWN:
+		case SCI_LINESCROLLUP:
+		case SCI_DELETEBACKNOTLINE:
+		case SCI_HOMEDISPLAY:
+		case SCI_HOMEDISPLAYEXTEND:
+		case SCI_LINEENDDISPLAY:
+		case SCI_LINEENDDISPLAYEXTEND:
+		case SCI_LINEDOWNRECTEXTEND:
+		case SCI_LINEUPRECTEXTEND:
+		case SCI_CHARLEFTRECTEXTEND:
+		case SCI_CHARRIGHTRECTEXTEND:
+		case SCI_HOMERECTEXTEND:
+		case SCI_VCHOMERECTEXTEND:
+		case SCI_LINEENDRECTEXTEND:
+		case SCI_PAGEUPRECTEXTEND:
+		case SCI_PAGEDOWNRECTEXTEND:
+		case SCI_SELECTIONDUPLICATE:
+		case SCI_COPYALLOWLINE:
+		case SCI_VERTICALCENTRECARET:
+		case SCI_MOVESELECTEDLINESUP:
+		case SCI_MOVESELECTEDLINESDOWN:
+		case SCI_SCROLLTOSTART:
+		case SCI_SCROLLTOEND:
+		{
+			if (_macroType == mtUseLParameter)
+				return true;
+			else
+				return false;
+		}
+
+		// Filter out all others like display changes. Also, newlines are redundant
+		// with char insert messages.
+		case SCI_NEWLINE:
+		default:
+			return false;
+	}
+}
+
 void recordedMacroStep::PlayBack(Window* pNotepad, ScintillaEditView *pEditView)
 {
 	if (_macroType == mtMenuCommand)
+	{
 		::SendMessage(pNotepad->getHSelf(), WM_COMMAND, _wParameter, 0);
-
+	}
 	else
 	{
-		if (_macroType == mtUseSParameter)
+		// Ensure it's macroable message before send it
+		if (!isMacroable())
+			return;
+
+		if (_macroType == mtUseSParameter) 
 		{
 			char ansiBuffer[3];
 			::WideCharToMultiByte(static_cast<UINT>(pEditView->execute(SCI_GETCODEPAGE)), 0, _sParameter.c_str(), -1, ansiBuffer, 3, NULL, NULL);
@@ -683,6 +824,8 @@ void recordedMacroStep::PlayBack(Window* pNotepad, ScintillaEditView *pEditView)
 			pEditView->execute(_message, _wParameter, _lParameter);
 		}
 
+		// If text content has been modified in Scintilla,
+		// then notify Notepad++
 		if ( (_message == SCI_SETTEXT)
 			|| (_message == SCI_REPLACESEL) 
 			|| (_message == SCI_ADDTEXT) 
@@ -698,6 +841,7 @@ void recordedMacroStep::PlayBack(Window* pNotepad, ScintillaEditView *pEditView)
 				scnN.ch = 0;
 			else
 				scnN.ch = _sParameter.at(0);
+
 			::SendMessage(pNotepad->getHSelf(), WM_NOTIFY, 0, reinterpret_cast<LPARAM>(&scnN));
 		}
 	}
@@ -743,7 +887,7 @@ void ScintillaAccelerator::updateKeys()
 	}
 }
 
-void ScintillaAccelerator::updateMenuItemByID(ScintillaKeyMap skm, int id) 
+void ScintillaAccelerator::updateMenuItemByID(const ScintillaKeyMap& skm, int id)
 {
 	const int commandSize = 64;
 	TCHAR cmdName[commandSize];
@@ -963,7 +1107,7 @@ INT_PTR CALLBACK ScintillaKeyMap::run_dlgProc(UINT Message, WPARAM wParam, LPARA
 	//return FALSE;
 }
 
-CommandShortcut::CommandShortcut(Shortcut sc, long id) :	Shortcut(sc), _id(id) {
+CommandShortcut::CommandShortcut(const Shortcut& sc, long id) :	Shortcut(sc), _id(id) {
 	if ( _id < IDM_EDIT)
 		_category = TEXT("File");
 	else if ( _id < IDM_SEARCH)

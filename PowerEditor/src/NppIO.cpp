@@ -50,7 +50,7 @@ DWORD WINAPI Notepad_plus::monitorFileOnChange(void * params)
 
 	//The folder to watch :
 	WCHAR folderToMonitor[MAX_PATH];
-	lstrcpy(folderToMonitor, fullFileName);
+	wcscpy_s(folderToMonitor, fullFileName);
 
 	::PathRemoveFileSpecW(folderToMonitor);
 	
@@ -153,26 +153,11 @@ BufferID Notepad_plus::doOpen(const generic_string& fileName, bool isRecursive, 
 	bool isSnapshotMode = backupFileName != NULL && PathFileExists(backupFileName);
 	if (isSnapshotMode && !PathFileExists(longFileName)) // UNTITLED
 	{
-		lstrcpy(longFileName, fileName.c_str());
+		wcscpy_s(longFileName, fileName.c_str());
 	}
-
-
     _lastRecentFileList.remove(longFileName);
 
-    generic_string fileName2Find;
-	generic_string gs_fileName{fileName};
-    size_t res = gs_fileName.find_first_of(UNTITLED_STR);
-
-    if (res != string::npos && res == 0)
-    {
-        fileName2Find = fileName;
-    }
-    else
-    {
-        fileName2Find = longFileName;
-    }
-
-    BufferID test = MainFileManager->getBufferFromName(fileName2Find.c_str());
+    BufferID test = MainFileManager->getBufferFromName(longFileName);
     if (test != BUFFER_INVALID && !isSnapshotMode)
     {
         if (_pTrayIco)
@@ -722,7 +707,7 @@ generic_string Notepad_plus::exts2Filters(generic_string exts) const
 
 	int j = 0;
 	bool stop = false;
-	for (size_t i = 0, len = exts.length(); i < len ; ++i)
+	for (size_t i = 0, len = exts.length(); i < len && j < MAX_PATH - 1; ++i)
 	{
 		if (extStr[i] == ' ')
 		{
@@ -1403,17 +1388,59 @@ bool Notepad_plus::fileRename(BufferID id)
 	scnN.nmhdr.idFrom = (uptr_t)bufferID;
 	_pluginsManager.notify(&scnN);
 
-	FileDialog fDlg(_pPublicInterface->getHSelf(), _pPublicInterface->getHinst());
-
-    fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
-	setFileOpenSaveDlgFilters(fDlg);
-
-	fDlg.setDefFileName(buf->getFileName());
-	TCHAR *pfn = fDlg.doSaveDlg();
-
 	bool success = false;
-	if (pfn)
-		success = MainFileManager->moveFile(bufferID, pfn);
+	bool isFileExisting = PathFileExists(buf->getFullPathName()) != FALSE;
+	if (isFileExisting)
+	{
+		FileDialog fDlg(_pPublicInterface->getHSelf(), _pPublicInterface->getHinst());
+
+		fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
+		setFileOpenSaveDlgFilters(fDlg);
+
+		fDlg.setDefFileName(buf->getFileName());
+		TCHAR *pfn = fDlg.doSaveDlg();
+
+		if (pfn)
+			success = MainFileManager->moveFile(bufferID, pfn);
+	}
+	else
+	{
+		// We are just going to rename the tab nothing else
+		// So just rename the tab and rename the backup file too if applicable
+
+		// https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file
+		// Reserved characters: < > : " / \ | ? *
+		std::wstring reservedChars = TEXT("<>:\"/\\|\?*");
+
+		generic_string title = _nativeLangSpeaker.getLocalizedStrFromID("tabrename-title", TEXT("Rename Current Tab"));
+		generic_string staticName = _nativeLangSpeaker.getLocalizedStrFromID("tabrename-newname", TEXT("New Name: "));
+
+		StringDlg strDlg;
+		strDlg.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), title.c_str(), staticName.c_str(), buf->getFileName(), 0, reservedChars.c_str(), true);
+
+		TCHAR *tabNewName = reinterpret_cast<TCHAR *>(strDlg.doDialog());
+		if (tabNewName)
+		{
+			success = true;
+			buf->setFileName(tabNewName);
+			bool isSnapshotMode = NppParameters::getInstance()->getNppGUI().isSnapshotMode();
+			if (isSnapshotMode)
+			{
+				generic_string oldBackUpFile = buf->getBackupFileName();
+
+				// Change the backup file name and let MainFileManager decide the new filename
+				buf->setBackupFileName(TEXT(""));
+
+				// Create new backup
+				buf->setModifiedStatus(true);
+				bool bRes = MainFileManager->backupCurrentBuffer();
+
+				// Delete old backup
+				if (bRes)
+					::DeleteFile(oldBackUpFile.c_str());
+			}
+		}
+	}
 
 	scnN.nmhdr.code = success ? NPPN_FILERENAMED : NPPN_FILERENAMECANCEL;
 	_pluginsManager.notify(&scnN);

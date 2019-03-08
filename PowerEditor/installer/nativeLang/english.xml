@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <NotepadPlus>
-    <Native-Langue name="English" filename="english.xml" version="7.6.2">
+    <Native-Langue name="English" filename="english.xml" version="7.6.3">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -295,6 +295,7 @@
                     <Item id="48018" name="Edit Popup ContextMenu"/>
                     <Item id="48009" name="Shortcut Mapper..."/>
                     <Item id="48011" name="Preferences..."/>
+                    <Item id="48014" name="Open Plugins Folder..."/>
                     <Item id="48015" name="Plugins Admin..."/>
                     <Item id="48501" name="Generate..."/>
                     <Item id="48502" name="Generate from files..."/>
@@ -1172,8 +1173,8 @@ Do you want to launch Notepad++ in Administrator mode?"/>
             <find-status-replaceinopenedfiles-nb-replaced value="Replace in Opened Files: $INT_REPLACE$ occurrences were replaced"/>
             <find-status-mark-re-malformed value="Mark: The regular expression to search is malformed"/>
             <find-status-invalid-re value="Find: Invalid regular expression"/>
-            <find-status-mark-1-match value="1 match"/>
-            <find-status-mark-nb-matches value="$INT_REPLACE$ matches"/>
+            <find-status-mark-1-match value="Mark: 1 match"/>
+            <find-status-mark-nb-matches value="Mark: $INT_REPLACE$ matches"/>
             <find-status-count-re-malformed value="Count: The regular expression to search is malformed"/>
             <find-status-count-1-match value="Count: 1 match"/>
             <find-status-count-nb-matches value="Count: $INT_REPLACE$ matches"/>
@@ -1196,6 +1197,18 @@ Do you want to launch Notepad++ in Administrator mode?"/>
             <finder-select-all value="Select all"/>
             <finder-clear-all value="Clear all"/>
             <finder-open-all value="Open all"/>
+            <common-ok value="OK"/>
+            <common-cancel value="Cancel"/>
+            <common-name value="Name: "/>
+            <tabrename-title value="Rename Current Tab"/>
+            <tabrename-newname value="New Name: "/>
+            <recent-file-history-maxfile value="Max File: "/>
+            <language-tabsize value="Tab Size: "/>
+            <userdefined-title-new value="Create New Language..."/>
+            <userdefined-title-save value="Save Current Language Name As..."/>
+            <userdefined-title-rename value="Rename Current Language Name"/>
+            <autocomplete-nb-char value="Nb char: "/>
+            <edit-verticaledge-nb-col value="Nb of Column:"/>
         </MiscStrings>
     </Native-Langue>
 </NotepadPlus>

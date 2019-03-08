@@ -42,6 +42,9 @@
 #include "verifySignedFile.h"
 #include "LongRunningOperation.h"
 
+#define TEXTFILE        256
+#define IDR_PLUGINLISTJSONFILE  101
+
 using namespace std;
 using nlohmann::json;
 
@@ -711,11 +714,13 @@ bool PluginsAdminDlg::isValide()
 
 	// check the signature on default location : %APPDATA%\Notepad++\plugins\config\pl\nppPluginList.dll or NPP_INST_DIR\plugins\config\pl\nppPluginList.dll
 	
-	bool isOK = VerifySignedLibrary(_pluginListFullPath.c_str(), NPP_COMPONENT_SIGNER_KEY_ID, NPP_COMPONENT_SIGNER_SUBJECT, NPP_COMPONENT_SIGNER_DISPLAY_NAME, false, false, false);
+	SecurityGard securityGard;
+	bool isOK = securityGard.checkModule(_pluginListFullPath, nm_pluginList);
+
 	if (!isOK)
 		return isOK;
 
-	isOK = VerifySignedLibrary(_updaterFullPath.c_str(), NPP_COMPONENT_SIGNER_KEY_ID, NPP_COMPONENT_SIGNER_SUBJECT, NPP_COMPONENT_SIGNER_DISPLAY_NAME, false, false, false);
+	isOK = securityGard.checkModule(_updaterFullPath, nm_gup);
 	return isOK;
 #endif
 }
@@ -739,7 +744,8 @@ bool PluginsAdminDlg::updateListAndLoadFromJson()
 
 #else //RELEASE
 
-		hLib = ::LoadLibrary(_pluginListFullPath.c_str());
+		hLib = ::LoadLibraryEx(_pluginListFullPath.c_str(), 0, LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE);
+
 		if (!hLib)
 		{
 			// Error treatment
@@ -747,19 +753,30 @@ bool PluginsAdminDlg::updateListAndLoadFromJson()
 			return false;
 		}
 
-		PFUNCGETPLUGINLIST pGetListFunc = (PFUNCGETPLUGINLIST)GetProcAddress(hLib, "getList");
-		if (!pGetListFunc)
+		HRSRC rc = ::FindResource(hLib, MAKEINTRESOURCE(IDR_PLUGINLISTJSONFILE), MAKEINTRESOURCE(TEXTFILE));
+		if (!rc)
 		{
-			// Error treatment
-			//printStr(TEXT("getList PB!!!"));
 			::FreeLibrary(hLib);
 			return false;
 		}
 
-		const char* pl = pGetListFunc();
-		//MessageBoxA(NULL, pl, "", MB_OK);
+		HGLOBAL rcData = ::LoadResource(hLib, rc);
+		if (!rcData)
+		{
+			::FreeLibrary(hLib);
+			return false;
+		}
 
-		j = j.parse(pl);
+		auto size = ::SizeofResource(hLib, rc);
+		auto data = static_cast<const char*>(::LockResource(rcData));
+
+		char* buffer = new char[size + 1];
+		::memcpy(buffer, data, size);
+		buffer[size] = '\0';
+
+		j = j.parse(buffer);
+
+		delete[] buffer;
 
 #endif
 		// if absent then download it
@@ -809,7 +826,7 @@ bool PluginsAdminDlg::loadFromPluginInfos()
 
 		// user file name (without ext. to find whole info in available list
 		TCHAR fnNoExt[MAX_PATH];
-		lstrcpy(fnNoExt, i._fileName.c_str());
+		wcscpy_s(fnNoExt, i._fileName.c_str());
 		::PathRemoveExtension(fnNoExt);
 
 		int listIndex;

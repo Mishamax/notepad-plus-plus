@@ -211,7 +211,7 @@ int PluginsManager::loadPlugin(const TCHAR *pluginFilePath)
 			}
 
 			TCHAR xmlPath[MAX_PATH];
-            lstrcpy(xmlPath, nppParams->getNppPath().c_str());
+			wcscpy_s(xmlPath, nppParams->getNppPath().c_str());
 			PathAppend(xmlPath, TEXT("plugins\\Config"));
             PathAppend(xmlPath, pi->_moduleName.c_str());
 			PathRemoveExtension(xmlPath);
@@ -220,7 +220,7 @@ int PluginsManager::loadPlugin(const TCHAR *pluginFilePath)
 			if (!PathFileExists(xmlPath))
 			{
 				lstrcpyn(xmlPath, TEXT("\0"), MAX_PATH );
-				lstrcpy(xmlPath, nppParams->getAppDataNppDir() );
+				wcscpy_s(xmlPath, nppParams->getAppDataNppDir() );
 				PathAppend(xmlPath, TEXT("plugins\\Config"));
                 PathAppend(xmlPath, pi->_moduleName.c_str());
 				PathRemoveExtension( xmlPath );
@@ -320,7 +320,7 @@ bool PluginsManager::loadPluginsV2(const TCHAR* dir)
 	if (hFindFolder != INVALID_HANDLE_VALUE && (foundData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 	{
 		generic_string foundFileName = foundData.cFileName;
-		if (foundFileName != TEXT(".") && foundFileName != TEXT(".."))
+		if (foundFileName != TEXT(".") && foundFileName != TEXT("..") && generic_stricmp(foundFileName.c_str(), TEXT("Config")) != 0)
 		{
 			generic_string pluginsFullPathFilter = pluginsFolder;
 			PathAppend(pluginsFullPathFilter, foundFileName);
@@ -343,7 +343,7 @@ bool PluginsManager::loadPluginsV2(const TCHAR* dir)
 		while (::FindNextFile(hFindFolder, &foundData))
 		{
 			generic_string foundFileName2 = foundData.cFileName;
-			if (foundFileName2 != TEXT(".") && foundFileName2 != TEXT(".."))
+			if (foundFileName2 != TEXT(".") && foundFileName2 != TEXT("..") && generic_stricmp(foundFileName2.c_str(), TEXT("Config")) != 0)
 			{
 				generic_string pluginsFullPathFilter2 = pluginsFolder;
 				PathAppend(pluginsFullPathFilter2, foundFileName2);
@@ -477,31 +477,33 @@ void PluginsManager::addInMenuFromPMIndex(int i)
 
 HMENU PluginsManager::setMenu(HMENU hMenu, const TCHAR *menuName, bool enablePluginAdmin)
 {
-	if (hasPlugins() || enablePluginAdmin)
+	const TCHAR *nom_menu = (menuName && menuName[0])?menuName:TEXT("&Plugins");
+	size_t nbPlugin = _pluginInfos.size();
+
+	if (!_hPluginsMenu)
 	{
-		const TCHAR *nom_menu = (menuName && menuName[0])?menuName:TEXT("&Plugins");
-		size_t nbPlugin = _pluginInfos.size();
+		_hPluginsMenu = ::CreateMenu();
+		::InsertMenu(hMenu,  MENUINDEX_PLUGINS, MF_BYPOSITION | MF_POPUP, (UINT_PTR)_hPluginsMenu, nom_menu);
 
-        if (!_hPluginsMenu)
-        {
-		    _hPluginsMenu = ::CreateMenu();
-		    ::InsertMenu(hMenu,  MENUINDEX_PLUGINS, MF_BYPOSITION | MF_POPUP, (UINT_PTR)_hPluginsMenu, nom_menu);
+		int i = 1;
 
-			if (enablePluginAdmin)
-			{
-				if (nbPlugin > 0)
-					::InsertMenu(_hPluginsMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, TEXT(""));
-				::InsertMenu(_hPluginsMenu, 1, MF_BYPOSITION, IDM_SETTING_PLUGINADM, TEXT("Plugins Admin..."));
-			}
-        }
+		if (nbPlugin > 0)
+			::InsertMenu(_hPluginsMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, TEXT(""));
 
-		for (size_t i = 0; i < nbPlugin; ++i)
+		if (enablePluginAdmin)
 		{
-			addInMenuFromPMIndex(static_cast<int32_t>(i));
+			::InsertMenu(_hPluginsMenu, i++, MF_BYPOSITION, IDM_SETTING_PLUGINADM, TEXT("Plugins Admin..."));
+			::InsertMenu(_hPluginsMenu, i++, MF_BYPOSITION | MF_SEPARATOR, 0, TEXT(""));
 		}
-        return _hPluginsMenu;
+
+		::InsertMenu(_hPluginsMenu, i, MF_BYPOSITION, IDM_SETTING_OPENPLUGINSDIR, TEXT("Open Plugins Folder..."));
 	}
-	return NULL;
+
+	for (size_t i = 0; i < nbPlugin; ++i)
+	{
+		addInMenuFromPMIndex(static_cast<int32_t>(i));
+	}
+	return _hPluginsMenu;
 }
 
 

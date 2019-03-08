@@ -361,9 +361,13 @@ bool isInList(const TCHAR *token, const TCHAR *list)
 
 generic_string purgeMenuItemString(const TCHAR * menuItemStr, bool keepAmpersand)
 {
-	TCHAR cleanedName[64] = TEXT("");
+	const size_t cleanedNameLen = 64;
+	TCHAR cleanedName[cleanedNameLen] = TEXT("");
 	size_t j = 0;
 	size_t menuNameLen = lstrlen(menuItemStr);
+	if (menuNameLen >= cleanedNameLen)
+		menuNameLen = cleanedNameLen - 1;
+
 	for (size_t k = 0 ; k < menuNameLen ; ++k)
 	{
 		if (menuItemStr[k] == '\t')
@@ -1151,7 +1155,7 @@ bool isCertificateValidated(const generic_string & fullFilePath, const generic_s
 
 		isOK = true;
 	}
-	catch (generic_string s)
+	catch (const generic_string& s)
 	{
 		// display error message
 		MessageBox(NULL, s.c_str(), TEXT("Certificate checking"), MB_OK);
@@ -1219,7 +1223,7 @@ bool deleteFileOrFolder(const generic_string& f2delete)
 {
 	auto len = f2delete.length();
 	TCHAR* actionFolder = new TCHAR[len + 2];
-	lstrcpy(actionFolder, f2delete.c_str());
+	wcscpy_s(actionFolder, len + 2, f2delete.c_str());
 	actionFolder[len] = 0;
 	actionFolder[len + 1] = 0;
 
@@ -1238,3 +1242,29 @@ bool deleteFileOrFolder(const generic_string& f2delete)
 	delete[] actionFolder;
 	return (res == 0);
 }
+
+// Get a vector of full file paths in a given folder. File extension type filter should be *.*, *.xml, *.dll... according the type of file you want to get.  
+void getFilesInFolder(std::vector<generic_string>& files, const generic_string& extTypeFilter, const generic_string& inFolder)
+{
+	generic_string filter = inFolder;
+	PathAppend(filter, extTypeFilter);
+
+	WIN32_FIND_DATA foundData;
+	HANDLE hFindFile = ::FindFirstFile(filter.c_str(), &foundData);
+
+	if (hFindFile != INVALID_HANDLE_VALUE && !(foundData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		generic_string foundFullPath = inFolder;
+		PathAppend(foundFullPath, foundData.cFileName);
+		files.push_back(foundFullPath);
+
+		while (::FindNextFile(hFindFile, &foundData))
+		{
+			generic_string foundFullPath2 = inFolder;
+			PathAppend(foundFullPath2, foundData.cFileName);
+			files.push_back(foundFullPath2);
+		}
+	}
+	::FindClose(hFindFile);
+}
+
