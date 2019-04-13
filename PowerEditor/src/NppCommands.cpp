@@ -91,8 +91,8 @@ void Notepad_plus::command(int id)
 
 		case IDM_FILE_OPEN_CMD:
 		{
-			Command cmd(TEXT("cmd /K cd /d \"$(CURRENT_DIRECTORY)\""));
-			cmd.run(_pPublicInterface->getHSelf());
+			Command cmd(TEXT("cmd"));
+			cmd.run(_pPublicInterface->getHSelf(), TEXT("$(CURRENT_DIRECTORY)"));
 		}
 		break;
 		
@@ -212,6 +212,11 @@ void Notepad_plus::command(int id)
 
 		case IDM_FILE_CLOSEALL_TORIGHT :
 			fileCloseAllToRight();
+			checkDocState();
+			break;
+
+		case IDM_FILE_CLOSEALL_UNCHANGED:
+			fileCloseAllUnchanged();
 			checkDocState();
 			break;
 
@@ -783,11 +788,11 @@ void Notepad_plus::command(int id)
 			const int index = id - IDM_VIEW_TAB1;
 			BufferID buf = _pDocTab->getBufferByIndex(index);
 			_isFolding = true;
-			if(buf == BUFFER_INVALID)
+			if (buf == BUFFER_INVALID)
 			{
 				// No buffer at chosen index, select the very last buffer instead.
 				const int last_index = _pDocTab->getItemCount() - 1;
-				if(last_index > 0)
+				if (last_index > 0)
 					switchToFile(_pDocTab->getBufferByIndex(last_index));
 			}
 			else
@@ -803,7 +808,7 @@ void Notepad_plus::command(int id)
 			const int current_index = _pDocTab->getCurrentTabIndex();
 			const int last_index = _pDocTab->getItemCount() - 1;
 			_isFolding = true;
-			if(current_index < last_index)
+			if (current_index < last_index)
 				switchToFile(_pDocTab->getBufferByIndex(current_index + 1));
 			else
 			{
@@ -817,7 +822,7 @@ void Notepad_plus::command(int id)
 		{
 			const int current_index = _pDocTab->getCurrentTabIndex();
 			_isFolding = true;
-			if(current_index > 0)
+			if (current_index > 0)
 				switchToFile(_pDocTab->getBufferByIndex(current_index - 1));
 			else
 			{
@@ -1280,7 +1285,7 @@ void Notepad_plus::command(int id)
 
 			if (braceOpposite != -1)
 			{
-				if(id == IDM_SEARCH_GOTOMATCHINGBRACE)
+				if (id == IDM_SEARCH_GOTOMATCHINGBRACE)
 					_pEditView->execute(SCI_GOTOPOS, braceOpposite);
 				else
 					_pEditView->execute(SCI_SETSEL, min(braceAtCaret, braceOpposite), max(braceAtCaret, braceOpposite) + 1); // + 1 so we always include the ending brace in the selection.
@@ -1777,6 +1782,74 @@ void Notepad_plus::command(int id)
 		case IDM_VIEW_POSTIT :
 		{
 			postItToggle();
+		}
+		break;
+
+		case IDM_VIEW_IN_FIREFOX:
+		case IDM_VIEW_IN_CHROME:
+		case IDM_VIEW_IN_IE:
+		{
+			auto currentBuf = _pEditView->getCurrentBuffer();
+			if (!currentBuf->isUntitled())
+			{
+				generic_string appName;
+
+				if (id == IDM_VIEW_IN_FIREFOX)
+				{
+					appName = TEXT("firefox.exe");
+				}
+				else if (id == IDM_VIEW_IN_CHROME)
+				{
+					appName = TEXT("chrome.exe");
+				}
+				else // if (id == IDM_VIEW_IN_IE)
+				{
+					appName = TEXT("IEXPLORE.EXE");
+				}
+
+				TCHAR valData[MAX_PATH] = {'\0'};
+				DWORD valDataLen = MAX_PATH * sizeof(TCHAR);
+				DWORD valType;
+				HKEY hKey2Check = nullptr;
+				generic_string appEntry = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\");
+				appEntry += appName;
+				::RegOpenKeyEx(HKEY_LOCAL_MACHINE, appEntry.c_str(), 0, KEY_READ, &hKey2Check);
+				::RegQueryValueEx(hKey2Check, TEXT(""), nullptr, &valType, reinterpret_cast<LPBYTE>(valData), &valDataLen);
+
+
+				generic_string fullCurrentPath = TEXT("\"");
+				fullCurrentPath += currentBuf->getFullPathName();
+				fullCurrentPath += TEXT("\"");
+
+				if (hKey2Check && valData[0] != '\0')
+				{
+					::ShellExecute(NULL, TEXT("open"), valData, fullCurrentPath.c_str(), NULL, SW_SHOWNORMAL);
+				}
+				else
+				{
+					_nativeLangSpeaker.messageBox("ViewInBrowser",
+						_pPublicInterface->getHSelf(),
+						TEXT("Application cannot be found in your system."),
+						TEXT("View Current File in Browser"),
+						MB_OK);
+				}
+				::RegCloseKey(hKey2Check);
+			}
+		}
+		break;
+		
+		case IDM_VIEW_IN_EDGE:
+		{
+			auto currentBuf = _pEditView->getCurrentBuffer();
+			if (!currentBuf->isUntitled())
+			{
+				// Don't put the quots for Edge, otherwise it doesn't work
+				//fullCurrentPath = TEXT("\"");
+				generic_string fullCurrentPath = currentBuf->getFullPathName();
+				//fullCurrentPath += TEXT("\"");
+
+				ShellExecute(NULL, TEXT("open"), TEXT("shell:Appsfolder\\Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MicrosoftEdge"), fullCurrentPath.c_str(), NULL, SW_SHOW);
+			}
 		}
 		break;
 
@@ -3289,6 +3362,7 @@ void Notepad_plus::command(int id)
 			case IDM_FILE_CLOSEALL_BUT_CURRENT :
 			case IDM_FILE_CLOSEALL_TOLEFT :
 			case IDM_FILE_CLOSEALL_TORIGHT :
+			case IDM_FILE_CLOSEALL_UNCHANGED:
 			case IDM_FILE_SAVE :
 			case IDM_FILE_SAVEALL :
 			case IDM_FILE_RELOAD:

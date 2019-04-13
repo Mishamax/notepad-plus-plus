@@ -4,10 +4,10 @@
 
 	** created By:- Rathin A. Dholakia **
 		Email- rathin2j@gmail.com
-	** Last Updated on 18/02/2019 by Rajendra Singh (singh.rajen15@gmail.com) **
+	** Last Updated on 21/03/2019 by Rajendra Singh (singh.rajen15@gmail.com) **
 -->
 <NotepadPlus>
-  <Native-Langue name="हिन्दी" filename="hindi.xml" version="7.6.3">
+  <Native-Langue name="हिन्दी" filename="hindi.xml" version="7.6.5">
     <Menu>
       <Main>
         <!-- Main Menu Entries -->
@@ -46,6 +46,7 @@
           <Item subMenuId="search-jumpUp" name="ऊपर कूदें"/>
           <Item subMenuId="search-jumpDown" name="नीचें कूदें"/>
           <Item subMenuId="search-bookmark" name="बूकमार्क"/>
+          <Item subMenuId="view-currentFileIn" name="वर्तमान फाइल देखें"/>
           <Item subMenuId="view-showSymbol" name="प्रतीक दिखायें"/>
           <Item subMenuId="view-zoom" name="बड़ा करें"/>
           <Item subMenuId="view-moveCloneDocument" name="वर्तमान दस्तावेज़ मूव/क्लोन करें"/>
@@ -112,6 +113,7 @@
           <Item id="42008" name="लाईन इंडेंट बढ़ायें"/>
           <Item id="42009" name="लाईन इंडेंट घटायें"/>
           <Item id="42010" name="वर्तमान लाईन की कॉपी करें"/>
+          <Item id="42077" name="लगातार डुप्लिकेट लाइनें निकालें"/>
           <Item id="42012" name="लाईन विभाजित करें"/>
           <Item id="42013" name="लाईन जोड़ें"/>
           <Item id="42014" name="वर्तमान लाईन को ऊपर सरकायें"/>
@@ -914,7 +916,11 @@
         </SearchEngine>
 
         <MISC title="विविध (MISC.)">
-          <Item id="6307" name="सक्रिय"/>
+          <ComboBox id="6347">
+            <Element name="इनेबल करें"/>
+            <Element name="सभी खुली हुई फाइलों के लिए इनेबल करें"/>
+            <Element name="डिसेबल करें"/>
+          </ComboBox>
           <Item id="6308" name="सिस्टम ट्रे में छोटा करें"/>
           <Item id="6312" name="फाईल स्टेटस की स्वचालित जांच"/>
           <Item id="6313" name="साइलेंटली अपडेट करें"/>
@@ -1056,6 +1062,7 @@
       <OpenInAdminModeWithoutCloseCurrent title="सेविंग फैल" message="फाइल को सेव नहीं कर सकते हैं और फाइल प्रोटेक्टेड हो सकती है।
 क्या आप Notepad ++ को एडमिन मोड में लॉन्च करना चाहते हैं?"/>
       <OpenInAdminModeFailed title="एडमिन मोड में खोलना विफल हुआ" message="Notepad ++ को एडमिन मोड में नहीं खोला जा सकता।"/>
+      <ViewInBrowser title="वर्तमान फाइल को ब्राउज़र में देखें" message="आपके सिस्टम में एप्लीकेशन नहीं मिली।"/>
     </MessageBox>
     <ClipboardHistory>
       <PanelTitle name="क्लिपबोर्ड हिस्ट्री"/>
@@ -1166,8 +1173,8 @@
 		<find-status-replaceinopenedfiles-nb-replaced value="खुली फाइलों में बदलें: $INT_REPLACE$ मिलानों को बदल दिया गया है।"/>
 		<find-status-mark-re-malformed value="निशान: ढूंढने के लिए रेगुलर एक्सप्रेशन गलत है।"/>
 		<find-status-invalid-re value="खोज: अवैध रेगुलर एक्सप्रेशन"/>
-		<find-status-mark-1-match value="1 मिलान"/>
-		<find-status-mark-nb-matches value="$INT_REPLACE$ मिलान"/>
+		<find-status-mark-1-match value="निशान: 1 मिलान"/>
+		<find-status-mark-nb-matches value="निशान: $INT_REPLACE$ मिलान"/>
 		<find-status-count-re-malformed value="गणना: ढूंढने के लिए रेगुलर एक्सप्रेशन गलत है।"/>
 		<find-status-count-1-match value="गणना: 1 मिलान"/>
 		<find-status-count-nb-matches value="गणना: $INT_REPLACE$ मिलान"/>
