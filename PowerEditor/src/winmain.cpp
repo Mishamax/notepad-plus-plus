@@ -133,14 +133,19 @@ void convertParamsToNotepadStyle(ParamVector & params)
 		ss << *it;
 		if ( std::next(it) != params.end() ) ss << TEXT(" ");
 	}
-	
+
 	if ( ssHasContents )
 	{
 		generic_string str = ss.str();
+
+		// Don't add a .txt extension because it interferes with opening files without an extension.
+#if 0
 		if ( *PathFindExtension(str.c_str()) == '\0' )
 		{
 			str.append(TEXT(".txt")); // If joined path has no extension, Notepad adds a .txt extension
 		}
+#endif
+
 		newParams.push_back(std::move(str));
 	}
 
@@ -315,6 +320,7 @@ void doException(Notepad_plus_Window & notepad_plus_plus)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 {
+
 	ParamVector params = parseCommandLine(::GetCommandLine());
 	stripIgnoredParams(params);
 
