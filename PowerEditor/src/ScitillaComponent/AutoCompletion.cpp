@@ -749,7 +749,7 @@ void AutoCompletion::update(int character)
 	}
 }
 
-void AutoCompletion::callTipClick(int direction) {
+void AutoCompletion::callTipClick(size_t direction) {
 	if (!_funcCompletionActive)
 		return;
 
@@ -772,8 +772,7 @@ bool AutoCompletion::setLanguage(LangType language) {
 	wcscat_s(path, getApiFileName());
 	wcscat_s(path, TEXT(".xml"));
 
-	if (_pXmlFile)
-		delete _pXmlFile;
+	delete _pXmlFile;
 
 	_pXmlFile = new TiXmlDocument(path);
 	_funcCompletionActive = _pXmlFile->LoadFile();

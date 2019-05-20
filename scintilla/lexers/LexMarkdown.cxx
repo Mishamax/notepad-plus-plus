@@ -51,17 +51,15 @@
 #include "CharacterSet.h"
 #include "LexerModule.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 static inline bool IsNewline(const int ch) {
     return (ch == '\n' || ch == '\r');
 }
 
 // True if can follow ch down to the end with possibly trailing whitespace
-static bool FollowToLineEnd(const int ch, const int state, const unsigned int endPos, StyleContext &sc) {
-    unsigned int i = 0;
+static bool FollowToLineEnd(const int ch, const int state, const Sci_PositionU endPos, StyleContext &sc) {
+    Sci_PositionU i = 0;
     while (sc.GetRelative(++i) == ch)
         ;
     // Skip over whitespace
@@ -78,10 +76,10 @@ static bool FollowToLineEnd(const int ch, const int state, const unsigned int en
 
 // Does the previous line have more than spaces and tabs?
 static bool HasPrevLineContent(StyleContext &sc) {
-    int i = 0;
+    Sci_Position i = 0;
 
 	// Go back to the previous newline
-    while ((--i + (int)sc.currentPos) >= 0 && !IsNewline(sc.GetRelative(i)))
+    while ((--i + (Sci_Position)sc.currentPos) >= 0 && !IsNewline(sc.GetRelative(i)))
         ;
 
 	// Skip newline characters
@@ -90,7 +88,7 @@ static bool HasPrevLineContent(StyleContext &sc) {
 	if (prevCh == '\r' && ch == '\n')
 		--i;
 
-	while ((--i + (int)sc.currentPos) >= 0) {
+	while ((--i + (Sci_Position)sc.currentPos) >= 0) {
         if (IsNewline(sc.GetRelative(i)))
             break;
         if (!IsASpaceOrTab(sc.GetRelative(i)))
@@ -119,12 +117,12 @@ static bool IsPrevLineEmpty(StyleContext &sc) {
 }
 
 static bool AtTermStart(StyleContext &sc) {
-    return sc.currentPos == 0 || isspacechar(sc.chPrev);
+    return sc.currentPos == 0 || sc.chPrev == 0 || isspacechar(sc.chPrev);
 }
 
-static bool IsValidHrule(const unsigned int endPos, StyleContext &sc) {
+static bool IsValidHrule(const Sci_PositionU endPos, StyleContext &sc) {
     int count = 1;
-    unsigned int i = 0;
+    Sci_PositionU i = 0;
     for (;;) {
         ++i;
         int c = sc.GetRelative(i);
@@ -183,10 +181,11 @@ static bool IsUnderlinedHeader(const int hdrCh, const unsigned int endPos, Style
 	return IsNewline(sc.GetRelative(i)) || sc.currentPos + i == endPos;
 }
 
-static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle,
+static void ColorizeMarkdownDoc(Sci_PositionU startPos, Sci_Position length, int initStyle,
                                WordList **, Accessor &styler) {
-    unsigned int endPos = startPos + length;
+    Sci_PositionU endPos = startPos + length;
     int precharCount = 0;
+    bool isLinkNameDetecting = false;
     // Don't advance on a new loop iteration and retry at the same position.
     // Useful in the corner case of having to start at the beginning file position
     // in the default state.
@@ -267,7 +266,7 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
 		*/
         else if (sc.state == SCE_MARKDOWN_CODEBK) {
             if (sc.atLineStart && sc.Match("~~~")) {
-                int i = 1;
+                Sci_Position i = 1;
                 while (!IsNewline(sc.GetRelative(i)) && sc.currentPos + i < endPos)
                     i++;
                 sc.Forward(i);
@@ -389,6 +388,27 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
                 ++precharCount;
         }
 
+        // Any link
+        if (sc.state == SCE_MARKDOWN_LINK) {
+            if (sc.Match("](") && sc.GetRelative(-1) != '\\') {
+              sc.Forward(2);
+              isLinkNameDetecting = true;
+            }
+            else if (sc.Match("]:") && sc.GetRelative(-1) != '\\') {
+              sc.Forward(2);
+              sc.SetState(SCE_MARKDOWN_DEFAULT);
+            }
+            else if (!isLinkNameDetecting && sc.ch == ']' && sc.GetRelative(-1) != '\\') {
+              sc.Forward();
+              sc.SetState(SCE_MARKDOWN_DEFAULT);
+            }
+            else if (isLinkNameDetecting && sc.ch == ')' && sc.GetRelative(-1) != '\\') {
+              sc.Forward();
+              sc.SetState(SCE_MARKDOWN_DEFAULT);
+              isLinkNameDetecting = false;
+            }
+        }
+
         // New state anywhere in doc
         if (sc.state == SCE_MARKDOWN_DEFAULT) {
             if (sc.atLineStart && (sc.ch == '#' ||
@@ -399,39 +419,16 @@ static void ColorizeMarkdownDoc(unsigned int startPos, int length, int initStyle
             }
             // Links and Images
 			/*
-            if (sc.Match("![") || sc.ch == '[') {
-                int i = 0, j = 0, k = 0;
-                int len = endPos - sc.currentPos;
-                while (i < len && (sc.GetRelative(++i) != ']' || sc.GetRelative(i - 1) == '\\'))
-                    ;
-                if (sc.GetRelative(i) == ']') {
-                    j = i;
-                    if (sc.GetRelative(++i) == '(') {
-                        while (i < len && (sc.GetRelative(++i) != ')' || sc.GetRelative(i - 1) == '\\'))
-                            ;
-                        if (sc.GetRelative(i) == ')')
-                            k = i;
-                    }
-                    else if (sc.GetRelative(i) == '[' || sc.GetRelative(++i) == '[') {
-                        while (i < len && (sc.GetRelative(++i) != ']' || sc.GetRelative(i - 1) == '\\'))
-                            ;
-                        if (sc.GetRelative(i) == ']')
-                            k = i;
-                    }
-                }
-                // At least a link text
-                if (j) {
-                    sc.SetState(SCE_MARKDOWN_LINK);
-                    sc.Forward(j);
-                    // Also has a URL or reference portion
-                    if (k)
-                        sc.Forward(k - j);
-                    sc.ForwardSetState(SCE_MARKDOWN_DEFAULT);
-                }
+              sc.SetState(SCE_MARKDOWN_LINK);
+              sc.Forward(2);
+            }
+            else if (sc.ch == '[' && sc.GetRelative(-1) != '\\') {
+              sc.SetState(SCE_MARKDOWN_LINK);
+              sc.Forward();
             }
 			*/
             // Code - also a special case for alternate inside spacing
-            if (sc.Match("```") && AtTermStart(sc)) {
+            else if (sc.Match("```") && AtTermStart(sc)) {
                 sc.SetState(SCE_MARKDOWN_CODE2);
                 sc.Forward();
             }

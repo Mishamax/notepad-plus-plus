@@ -675,7 +675,7 @@ bool FileManager::reloadBuffer(BufferID id)
 	buf->setLoadedDirty(false);	// Since the buffer will be reloaded from the disk, and it will be clean (not dirty), we can set _isLoadedDirty false safetly.
 								// Set _isLoadedDirty false before calling "_pscratchTilla->execute(SCI_CLEARALL);" in loadFileData() to avoid setDirty in SCN_SAVEPOINTREACHED / SCN_SAVEPOINTLEFT
 
-	bool res = loadFileData(doc, buf->getFullPathName(), data, &UnicodeConvertor, loadedFileFormat, false);
+	bool res = loadFileData(doc, buf->getFullPathName(), data, &UnicodeConvertor, loadedFileFormat);
 	buf->_canNotify = true;
 
 	if (res)
@@ -1030,6 +1030,8 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 		// Note that fwrite() doesn't return the number of bytes written, but rather the number of ITEMS.
 		if (items_written != 1)
 		{
+			_pscratchTilla->execute(SCI_SETDOCPOINTER, 0, _scratchDocDefault);
+
 			if (error_msg != NULL)
 				*error_msg = TEXT("Failed to save file.\nNot enough space on disk to save file?");
 
@@ -1039,7 +1041,7 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 		if (isHiddenOrSys)
 			::SetFileAttributes(fullpath, attrib);
 
-		if (isCopy)
+		if (isCopy) // Save As command
 		{
 			_pscratchTilla->execute(SCI_SETDOCPOINTER, 0, _scratchDocDefault);
 
@@ -1262,7 +1264,7 @@ LangType FileManager::detectLanguageFromTextBegining(const unsigned char *data, 
 	return L_TEXT;
 }
 
-bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data, Utf8_16_Read * unicodeConvertor, LoadedFileFormat& fileFormat, bool purgeUndoBuffer)
+bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data, Utf8_16_Read * unicodeConvertor, LoadedFileFormat& fileFormat)
 {
 	FILE *fp = generic_fopen(filename, TEXT("rb"));
 	if (not fp)
@@ -1296,12 +1298,6 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 	{
 		_pscratchTilla->execute(SCI_SETREADONLY, false);
 	}
-
-	if (!purgeUndoBuffer)
-	{
-		_pscratchTilla->execute(SCI_BEGINUNDOACTION);
-	}
-
 	_pscratchTilla->execute(SCI_CLEARALL);
 
 
@@ -1434,7 +1430,7 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 		fileFormat._eolFormat = format;
 	}
 
-	_pscratchTilla->execute(purgeUndoBuffer ? SCI_EMPTYUNDOBUFFER : SCI_ENDUNDOACTION);
+	_pscratchTilla->execute(SCI_EMPTYUNDOBUFFER);
 	_pscratchTilla->execute(SCI_SETSAVEPOINT);
 
 	if (ro)

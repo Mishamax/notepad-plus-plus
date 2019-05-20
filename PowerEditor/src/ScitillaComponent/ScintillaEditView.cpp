@@ -432,7 +432,7 @@ LRESULT ScintillaEditView::scintillaNew_Proc(HWND hwnd, UINT Message, WPARAM wPa
 
 				// get the current text selection
 
-				CharacterRange range = getSelection();
+				Sci_CharacterRange range = getSelection();
 				if (range.cpMax == range.cpMin)
 				{
 					// no selection: select the current word instead
@@ -1740,10 +1740,11 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 	    setSpecialStyle(styleLN);
     }
     setTabSettings(_pParameter->getLangFromID(typeDoc));
-
+	/*
 	execute(SCI_SETSTYLEBITS, 8);	// Always use 8 bit mask in Document class (Document::stylingBitsMask),
 									// in that way Editor::PositionIsHotspot will return correct hotspot styleID.
 									// This value has no effect on LexAccessor::mask.
+									*/
 }
 
 BufferID ScintillaEditView::attachDefaultDoc()
@@ -1849,7 +1850,8 @@ void ScintillaEditView::activateBuffer(BufferID buffer)
 
 	setWordChars();
 
-	if (_currentBuffer->getNeedsLexing()) {
+	if (_currentBuffer->getNeedsLexing())
+	{
 		restyleBuffer();
 	}
 
@@ -2028,7 +2030,7 @@ void ScintillaEditView::foldAll(bool mode)
 
 void ScintillaEditView::getText(char *dest, size_t start, size_t end) const
 {
-	TextRange tr;
+	Sci_TextRange tr;
 	tr.chrg.cpMin = static_cast<long>(start);
 	tr.chrg.cpMax = static_cast<long>(end);
 	tr.lpstrText = dest;
@@ -2142,7 +2144,7 @@ char * ScintillaEditView::getSelectedText(char * txt, int size, bool expand)
 {
 	if (!size)
 		return NULL;
-	CharacterRange range = getSelection();
+	Sci_CharacterRange range = getSelection();
 	if (range.cpMax == range.cpMin && expand)
 	{
 		expandWordSelection();
@@ -2286,27 +2288,27 @@ void ScintillaEditView::beginOrEndSelect()
 	}
 	else
 	{
-		execute(SCI_SETANCHOR, _beginSelectPosition);
+		execute(SCI_SETANCHOR, static_cast<WPARAM>(_beginSelectPosition));
 		_beginSelectPosition = -1;
 	}
 }
 
-void ScintillaEditView::updateBeginEndSelectPosition(const bool is_insert, const int position, const int length)
+void ScintillaEditView::updateBeginEndSelectPosition(bool is_insert, size_t position, size_t length)
 {
-	if (_beginSelectPosition != -1 && position < _beginSelectPosition - 1)
+	if (_beginSelectPosition != -1 && static_cast<long long>(position) < _beginSelectPosition - 1)
 	{
 		if (is_insert)
-			_beginSelectPosition += length;
+			_beginSelectPosition += static_cast<long long>(length);
 		else
-			_beginSelectPosition -= length;
+			_beginSelectPosition -= static_cast<long long>(length);
 
 		assert(_beginSelectPosition >= 0);
 	}
 }
 
-void ScintillaEditView::marginClick(int position, int modifiers)
+void ScintillaEditView::marginClick(Sci_Position position, int modifiers)
 {
-	int lineClick = int(execute(SCI_LINEFROMPOSITION, position, 0));
+	size_t lineClick = execute(SCI_LINEFROMPOSITION, position, 0);
 	int levelClick = int(execute(SCI_GETFOLDLEVEL, lineClick, 0));
 	if (levelClick & SC_FOLDLEVELHEADERFLAG)
     {
@@ -2341,9 +2343,9 @@ void ScintillaEditView::marginClick(int position, int modifiers)
 	}
 }
 
-void ScintillaEditView::expand(int &line, bool doExpand, bool force, int visLevels, int level)
+void ScintillaEditView::expand(size_t& line, bool doExpand, bool force, int visLevels, int level)
 {
-	int lineMaxSubord = int(execute(SCI_GETLASTCHILD, line, level & SC_FOLDLEVELNUMBERMASK));
+	size_t lineMaxSubord = execute(SCI_GETLASTCHILD, line, level & SC_FOLDLEVELNUMBERMASK);
 	++line;
 	while (line <= lineMaxSubord)
     {
@@ -2465,7 +2467,7 @@ void ScintillaEditView::performGlobalStyles()
 void ScintillaEditView::setLineIndent(int line, int indent) const {
 	if (indent < 0)
 		return;
-	CharacterRange crange = getSelection();
+	Sci_CharacterRange crange = getSelection();
 	int posBefore = static_cast<int32_t>(execute(SCI_GETLINEINDENTPOSITION, line));
 	execute(SCI_SETLINEINDENTATION, line, indent);
 	int32_t posAfter = static_cast<int32_t>(execute(SCI_GETLINEINDENTPOSITION, line));
@@ -3054,7 +3056,7 @@ void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, int initial, int in
 }
 
 
-void ScintillaEditView::foldChanged(int line, int levelNow, int levelPrev)
+void ScintillaEditView::foldChanged(size_t line, int levelNow, int levelPrev)
 {
 	if (levelNow & SC_FOLDLEVELHEADERFLAG)		//line can be folded
 	{
@@ -3200,7 +3202,7 @@ void ScintillaEditView::notifyMarkers(Buffer * buf, bool isHide, int location, b
 }
 //Run through full document. When switching in or opening folding
 //hide is false only when user click on margin
-void ScintillaEditView::runMarkers(bool doHide, int searchStart, bool endOfDoc, bool doDelete)
+void ScintillaEditView::runMarkers(bool doHide, size_t searchStart, bool endOfDoc, bool doDelete)
 {
 	//Removes markers if opening
 	/*
@@ -3228,12 +3230,12 @@ void ScintillaEditView::runMarkers(bool doHide, int searchStart, bool endOfDoc, 
 				Skip to LASTCHILD
 				Set last start to lastchild
 	*/
-	int maxLines = static_cast<int32_t>(execute(SCI_GETLINECOUNT));
+	size_t maxLines = execute(SCI_GETLINECOUNT);
 	if (doHide)
 	{
-		int startHiding = searchStart;
+		auto startHiding = searchStart;
 		bool isInSection = false;
-		for (int i = searchStart; i < maxLines; ++i)
+		for (auto i = searchStart; i < maxLines; ++i)
 		{
 			auto state = execute(SCI_MARKERGET, i);
 			if ( ((state & (1 << MARK_HIDELINESEND)) != 0) )
@@ -3258,9 +3260,9 @@ void ScintillaEditView::runMarkers(bool doHide, int searchStart, bool endOfDoc, 
 	}
 	else
 	{
-		int startShowing = searchStart;
+		auto startShowing = searchStart;
 		bool isInSection = false;
-		for (int i = searchStart; i < maxLines; ++i)
+		for (auto i = searchStart; i < maxLines; ++i)
 		{
 			auto state = execute(SCI_MARKERGET, i);
 			if ( ((state & (1 << MARK_HIDELINESEND)) != 0) )
