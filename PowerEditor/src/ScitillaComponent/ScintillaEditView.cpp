@@ -746,6 +746,8 @@ void ScintillaEditView::setEmbeddedAspLexer()
 		keywordList = wstring2string(kwlW, CP_ACP);
 	}
 
+	execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("asp.default.language"), reinterpret_cast<LPARAM>("2"));
+
 	execute(SCI_SETKEYWORDS, 2, reinterpret_cast<LPARAM>(getCompleteKeywordList(keywordList, L_VB, LANG_INDEX_INSTR)));
 
     execute(SCI_STYLESETEOLFILLED, SCE_HBA_DEFAULT, true);
@@ -1951,8 +1953,80 @@ void ScintillaEditView::bufferUpdated(Buffer * buffer, int mask)
 	}
 }
 
+bool ScintillaEditView::isFoldIndentationBased() const
+{
+	const auto lexer = execute(SCI_GETLEXER);
+	// search IndentAmount in scintilla\lexers folder
+	return lexer == SCLEX_PYTHON
+		|| lexer == SCLEX_COFFEESCRIPT
+		|| lexer == SCLEX_HASKELL
+		|| lexer == SCLEX_NIMROD
+		|| lexer == SCLEX_VB
+		|| lexer == SCLEX_YAML
+	;
+}
+
+namespace {
+
+struct FoldLevelStack
+{
+	int levelCount = 0; // 1-based level number
+	int levelStack[MAX_FOLD_COLLAPSE_LEVEL]{};
+
+	void push(int level)
+	{
+		while (levelCount != 0 && level <= levelStack[levelCount - 1])
+		{
+			--levelCount;
+		}
+		levelStack[levelCount++] = level;
+	}
+};
+
+}
+
+void ScintillaEditView::collapseFoldIndentationBased(int level2Collapse, bool mode)
+{
+	execute(SCI_COLOURISE, 0, -1);
+
+	FoldLevelStack levelStack;
+	++level2Collapse; // 1-based level number
+
+	const int maxLine = static_cast<int32_t>(execute(SCI_GETLINECOUNT));
+	int line = 0;
+
+	while (line < maxLine)
+	{
+		int level = static_cast<int32_t>(execute(SCI_GETFOLDLEVEL, line));
+		if (level & SC_FOLDLEVELHEADERFLAG)
+		{
+			level &= SC_FOLDLEVELNUMBERMASK;
+			// don't need the actually level number, only the relationship.
+			levelStack.push(level);
+			if (level2Collapse == levelStack.levelCount)
+			{
+				if (isFolded(line) != mode)
+				{
+					fold(line, mode);
+				}
+				// skip all children lines, required to avoid buffer overrun.
+				line = static_cast<int32_t>(execute(SCI_GETLASTCHILD, line, -1));
+			}
+		}
+		++line;
+	}
+
+	runMarkers(true, 0, true, false);
+}
+
 void ScintillaEditView::collapse(int level2Collapse, bool mode)
 {
+	if (isFoldIndentationBased())
+	{
+		collapseFoldIndentationBased(level2Collapse, mode);
+		return;
+	}
+
 	execute(SCI_COLOURISE, 0, -1);
 
 	int maxLine = static_cast<int32_t>(execute(SCI_GETLINECOUNT));
@@ -3268,7 +3342,13 @@ void ScintillaEditView::runMarkers(bool doHide, size_t searchStart, bool endOfDo
 			if ( ((state & (1 << MARK_HIDELINESEND)) != 0) )
 			{
 				if (doDelete)
+				{
 					execute(SCI_MARKERDELETE, i, MARK_HIDELINESEND);
+					if (!endOfDoc)
+					{
+						return;	//done, only single section requested
+					}	//otherwise keep going
+				}
 				 else if (isInSection)
 				 {
 					if (startShowing >= i)
