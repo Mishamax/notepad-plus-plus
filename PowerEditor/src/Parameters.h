@@ -904,7 +904,7 @@ struct ScintillaViewParams
 	bool _wrapSymbolShow = false;
 	bool _doWrap = false;
 	int _edgeMode = EDGE_LINE;
-	int _edgeNbColumn = 80;
+	int _edgeNbColumn = 120;
 	int _zoom = 0;
 	int _zoom2 = 0;
 	bool _whiteSpaceShow = false;
