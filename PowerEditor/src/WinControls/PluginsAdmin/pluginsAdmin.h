@@ -44,10 +44,10 @@ struct Version
 	unsigned long _patch = 0;
 	unsigned long _build = 0;
 
-	Version() {};
+	Version() = default;
 	Version(const generic_string& versionStr);
 
-	void setVersionFrom(generic_string filePath);
+	void setVersionFrom(const generic_string& filePath);
 	generic_string toString();
 	bool isNumber(const generic_string& s) const {
 		return !s.empty() && 
@@ -89,7 +89,7 @@ struct PluginUpdateInfo
 	bool _isVisible = true;       // if false then it should not be displayed 
 
 	generic_string describe();
-	PluginUpdateInfo() {};
+	PluginUpdateInfo() = default;
 	PluginUpdateInfo(const generic_string& fullFilePath, const generic_string& fileName);
 };
 
@@ -126,7 +126,7 @@ struct SortDisplayNameDecrease final
 class PluginViewList
 {
 public:
-	PluginViewList() {};
+	PluginViewList() = default;
 	~PluginViewList() {
 		_ui.destroy();
 		for (auto i : _list)
@@ -172,7 +172,7 @@ class PluginsAdminDlg final : public StaticDialog
 {
 public :
 	PluginsAdminDlg();
-	~PluginsAdminDlg() {};
+	~PluginsAdminDlg() = default;
 
     void init(HINSTANCE hInst, HWND parent)	{
         Window::init(hInst, parent);
@@ -229,13 +229,13 @@ private :
 	bool searchInPlugins(bool isNextMode) const;
 	const bool _inNames = true;
 	const bool _inDescs = false;
-	bool isFoundInAvailableListFromIndex(int index, generic_string str2search, bool inWhichPart) const;
-	long searchFromCurrentSel(generic_string str2search, bool inWhichPart, bool isNextMode) const;
-	long searchInNamesFromCurrentSel(generic_string str2search, bool isNextMode) const {
+	bool isFoundInAvailableListFromIndex(int index, const generic_string& str2search, bool inWhichPart) const;
+	long searchFromCurrentSel(const generic_string& str2search, bool inWhichPart, bool isNextMode) const;
+	long searchInNamesFromCurrentSel(const generic_string& str2search, bool isNextMode) const {
 		return searchFromCurrentSel(str2search, _inNames, isNextMode);
 	};
 
-	long searchInDescsFromCurrentSel(generic_string str2search, bool isNextMode) const {
+	long searchInDescsFromCurrentSel(const generic_string& str2search, bool isNextMode) const {
 		return searchFromCurrentSel(str2search, _inDescs, isNextMode);
 	};
 	

@@ -36,9 +36,6 @@
 #include "ScintillaEditView.h"
 #include "EncodingMapper.h"
 #include "uchardet.h"
-#include "LongRunningOperation.h"
-
-FileManager * FileManager::_pSelf = new FileManager();
 
 static const int blockSize = 128 * 1024 + 4;
 static const int CR = 0x0D;
@@ -76,8 +73,8 @@ Buffer::Buffer(FileManager * pManager, BufferID id, Document doc, DocFileStatus 
 	// type must be either DOC_REGULAR or DOC_UNNAMED
 	: _pManager(pManager) , _id(id), _doc(doc), _lang(L_TEXT)
 {
-	NppParameters* pNppParamInst = NppParameters::getInstance();
-	const NewDocDefaultSettings& ndds = (pNppParamInst->getNppGUI()).getNewDocDefaultSettings();
+	NppParameters& nppParamInst = NppParameters::getInstance();
+	const NewDocDefaultSettings& ndds = (nppParamInst.getNppGUI()).getNewDocDefaultSettings();
 
 	_eolFormat = ndds._format;
 	_unicodeMode = ndds._unicodeMode;
@@ -165,7 +162,7 @@ void Buffer::updateTimeStamp()
 // If the ext is not in the list, the defaultLang passed as argument will be set.
 void Buffer::setFileName(const TCHAR *fn, LangType defaultLang)
 {
-	NppParameters *pNppParamInst = NppParameters::getInstance();
+	NppParameters& nppParamInst = NppParameters::getInstance();
 	if (_fullPathName == fn)
 	{
 		updateTimeStamp();
@@ -184,7 +181,7 @@ void Buffer::setFileName(const TCHAR *fn, LangType defaultLang)
 		ext += 1;
 
 		// Define User Lang firstly
-		const TCHAR* langName = pNppParamInst->getUserDefinedLangNameFromExt(ext, _fileName);
+		const TCHAR* langName = nppParamInst.getUserDefinedLangNameFromExt(ext, _fileName);
 		if (langName)
 		{
 			newLang = L_USER;
@@ -193,7 +190,7 @@ void Buffer::setFileName(const TCHAR *fn, LangType defaultLang)
 		else // if it's not user lang, then check if it's supported lang
 		{
 			_userLangExt.clear();
-			newLang = pNppParamInst->getLangFromExt(ext);
+			newLang = nppParamInst.getLangFromExt(ext);
 		}
 	}
 
@@ -233,11 +230,11 @@ bool Buffer::checkFileState() // returns true if the status has been changed (it
 
 	WIN32_FILE_ATTRIBUTE_DATA attributes;
 	bool isWow64Off = false;
-	NppParameters *pNppParam = NppParameters::getInstance();
+	NppParameters& nppParam = NppParameters::getInstance();
 
 	if (not PathFileExists(_fullPathName.c_str()))
 	{
-		pNppParam->safeWow64EnableWow64FsRedirection(FALSE);
+		nppParam.safeWow64EnableWow64FsRedirection(FALSE);
 		isWow64Off = true;
 	}
 
@@ -302,7 +299,7 @@ bool Buffer::checkFileState() // returns true if the status has been changed (it
 
 	if (isWow64Off)
 	{
-		pNppParam->safeWow64EnableWow64FsRedirection(TRUE);
+		nppParam.safeWow64EnableWow64FsRedirection(TRUE);
 	}
 	return isOK;
 }
@@ -417,16 +414,16 @@ const std::vector<size_t> & Buffer::getHeaderLineState(const ScintillaEditView *
 
 Lang * Buffer::getCurrentLang() const
 {
-	NppParameters *pNppParam = NppParameters::getInstance();
+	NppParameters& nppParam = NppParameters::getInstance();
 	int i = 0;
-	Lang *l = pNppParam->getLangFromIndex(i);
+	Lang *l = nppParam.getLangFromIndex(i);
 	++i;
 	while (l)
 	{
 		if (l->_langID == _lang)
 			return l;
 
-		l = pNppParam->getLangFromIndex(i);
+		l = nppParam.getLangFromIndex(i);
 		++i;
 	}
 	return nullptr;
@@ -693,8 +690,8 @@ void FileManager::setLoadedBufferEncodingAndEol(Buffer* buf, const Utf8_16_Read&
 {
 	if (encoding == -1)
 	{
-		NppParameters *pNppParamInst = NppParameters::getInstance();
-		const NewDocDefaultSettings & ndds = (pNppParamInst->getNppGUI()).getNewDocDefaultSettings();
+		NppParameters& nppParamInst = NppParameters::getInstance();
+		const NewDocDefaultSettings & ndds = (nppParamInst.getNppGUI()).getNewDocDefaultSettings();
 
 		UniMode um = UnicodeConvertor.getEncoding();
 		if (um == uni7Bit)
@@ -751,7 +748,7 @@ bool FileManager::moveFile(BufferID id, const TCHAR * newFileName)
 {
 	Buffer* buf = getBufferByID(id);
 	const TCHAR *fileNamePath = buf->getFullPathName();
-	if (::MoveFileEx(fileNamePath, newFileName, MOVEFILE_REPLACE_EXISTING) == 0)
+	if (::MoveFileEx(fileNamePath, newFileName, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED) == 0)
 		return false;
 
 	buf->setFileName(newFileName);
@@ -801,9 +798,12 @@ For untitled document (new  4)
 	In the current session, Notepad++
 	1. track UNTITLED_NAME@CREATION_TIMESTAMP (backup\new  4@198776) in session.xml.
 */
+
+std::mutex backup_mutex;
+
 bool FileManager::backupCurrentBuffer()
 {
-	LongRunningOperation op;
+	std::lock_guard<std::mutex> lock(backup_mutex);
 
 	Buffer* buffer = _pNotepadPlus->getCurrentBuffer();
 	bool result = false;
@@ -825,7 +825,7 @@ bool FileManager::backupCurrentBuffer()
 			if (backupFilePath.empty())
 			{
 				// Create file
-				backupFilePath = NppParameters::getInstance()->getUserPath();
+				backupFilePath = NppParameters::getInstance().getUserPath();
 				backupFilePath += TEXT("\\backup\\");
 
 				// if "backup" folder doesn't exist, create it.
@@ -881,7 +881,7 @@ bool FileManager::backupCurrentBuffer()
 				}
 				else
 				{
-					WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
+					WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 					int grabSize;
 					for (int i = 0; i < lengthDoc; i += grabSize)
 					{
@@ -891,7 +891,7 @@ bool FileManager::backupCurrentBuffer()
 
 						int newDataLen = 0;
 						int incompleteMultibyteChar = 0;
-						const char *newData = wmc->encode(SC_CP_UTF8, encoding, buf+i, grabSize, &newDataLen, &incompleteMultibyteChar);
+						const char *newData = wmc.encode(SC_CP_UTF8, encoding, buf+i, grabSize, &newDataLen, &incompleteMultibyteChar);
 						grabSize -= incompleteMultibyteChar;
 						items_written = UnicodeConvertor.fwrite(newData, newDataLen);
 					}
@@ -954,9 +954,11 @@ bool FileManager::deleteBufferBackup(BufferID id)
 	return result;
 }
 
+std::mutex save_mutex;
+
 bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, generic_string * error_msg)
 {
-	LongRunningOperation op;
+	std::lock_guard<std::mutex> lock(save_mutex);
 
 	Buffer* buffer = getBufferByID(id);
 	bool isHiddenOrSys = false;
@@ -1006,7 +1008,7 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 		}
 		else
 		{
-			WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
+			WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 			int grabSize;
 			for (int i = 0; i < lengthDoc; i += grabSize)
 			{
@@ -1016,7 +1018,7 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 
 				int newDataLen = 0;
 				int incompleteMultibyteChar = 0;
-				const char *newData = wmc->encode(SC_CP_UTF8, encoding, buf+i, grabSize, &newDataLen, &incompleteMultibyteChar);
+				const char *newData = wmc.encode(SC_CP_UTF8, encoding, buf+i, grabSize, &newDataLen, &incompleteMultibyteChar);
 				grabSize -= incompleteMultibyteChar;
 				items_written = UnicodeConvertor.fwrite(newData, newDataLen);
 			}
@@ -1171,7 +1173,7 @@ int FileManager::detectCodepage(char* buf, size_t len)
 	uchardet_handle_data(ud, buf, len);
 	uchardet_data_end(ud);
 	const char* cs = uchardet_get_charset(ud);
-	int codepage = EncodingMapper::getInstance()->getEncodingFromString(cs);
+	int codepage = EncodingMapper::getInstance().getEncodingFromString(cs);
 	uchardet_delete(ud);
 	return codepage;
 }
@@ -1282,7 +1284,7 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 	// As a 32bit application, we cannot allocate 2 buffer of more than INT_MAX size (it takes the whole address space)
 	if (bufferSizeRequested > INT_MAX)
 	{
-		NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+		NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 		pNativeSpeaker->messageBox("FileTooBigToOpen",
 										NULL,
 										TEXT("File is too big to be opened by Notepad++"),
@@ -1311,9 +1313,9 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 	else
 	{
 		int id = fileFormat._language - L_EXTERNAL;
-		TCHAR * name = NppParameters::getInstance()->getELCFromIndex(id)._name;
-		WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
-		const char *pName = wmc->wchar2char(name, CP_ACP);
+		TCHAR * name = NppParameters::getInstance().getELCFromIndex(id)._name;
+		WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+		const char *pName = wmc.wchar2char(name, CP_ACP);
 		_pscratchTilla->execute(SCI_SETLEXERLANGUAGE, 0, reinterpret_cast<LPARAM>(pName));
 	}
 
@@ -1350,7 +1352,7 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 				}
 				else if (fileFormat._encoding == -1)
 				{
-					if (NppParameters::getInstance()->getNppGUI()._detectEncoding)
+					if (NppParameters::getInstance().getNppGUI()._detectEncoding)
 						fileFormat._encoding = detectCodepage(data, lenFile);
                 }
 
@@ -1372,9 +1374,9 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 				}
 				else
 				{
-					WcharMbcsConvertor* wmc = WcharMbcsConvertor::getInstance();
+					WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 					int newDataLen = 0;
-					const char *newData = wmc->encode(fileFormat._encoding, SC_CP_UTF8, data, static_cast<int32_t>(lenFile), &newDataLen, &incompleteMultibyteChar);
+					const char *newData = wmc.encode(fileFormat._encoding, SC_CP_UTF8, data, static_cast<int32_t>(lenFile), &newDataLen, &incompleteMultibyteChar);
 					_pscratchTilla->execute(SCI_APPENDTEXT, newDataLen, reinterpret_cast<LPARAM>(newData));
 				}
 
@@ -1403,7 +1405,7 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER) //TODO: should filter correctly for other exceptions; the old filter(GetExceptionCode(), GetExceptionInformation()) was only catching access violations
 	{
-		NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+		NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 		pNativeSpeaker->messageBox("FileTooBigToOpen",
 			NULL,
 			TEXT("File is too big to be opened by Notepad++"),
@@ -1417,8 +1419,8 @@ bool FileManager::loadFileData(Document doc, const TCHAR * filename, char* data,
 	// broadcast the format
 	if (format == EolType::unknown)
 	{
-		NppParameters *pNppParamInst = NppParameters::getInstance();
-		const NewDocDefaultSettings & ndds = (pNppParamInst->getNppGUI()).getNewDocDefaultSettings(); // for ndds._format
+		NppParameters& nppParamInst = NppParameters::getInstance();
+		const NewDocDefaultSettings & ndds = (nppParamInst.getNppGUI()).getNewDocDefaultSettings(); // for ndds._format
 		fileFormat._eolFormat = ndds._format;
 
 		//for empty files, if the default for new files is UTF8, and "Apply to opened ANSI files" is set, apply it

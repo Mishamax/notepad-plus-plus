@@ -29,17 +29,19 @@
 SectionGroup "Plugins" Plugins
 	SetOverwrite on
 	
-!ifndef ARCH64
 	${MementoSection} "NppExport" NppExport
 		Delete "$INSTDIR\plugins\NppExport.dll"
 		Delete "$INSTDIR\plugins\NppExport\NppExport.dll"
 		Delete "$PLUGIN_INST_PATH\NppExport\NppExport.dll"
 		
 		SetOutPath "$PLUGIN_INST_PATH\NppExport"
+!ifdef ARCH64
+		File "..\bin64\plugins\NppExport\NppExport.dll"
+!else
 		File "..\bin\plugins\NppExport\NppExport.dll"
+!endif
 	${MementoSectionEnd}
 
-!endif
 
 	${MementoSection} "Mime Tools" MimeTools
 		Delete "$INSTDIR\plugins\mimeTools.dll"

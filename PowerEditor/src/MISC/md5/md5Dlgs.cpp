@@ -30,12 +30,22 @@ INT_PTR CALLBACK HashFromFilesDlg::run_dlgProc(UINT message, WPARAM wParam, LPAR
 	{
 		case WM_INITDIALOG:
 		{
-			int fontDpiDynamicalHeight = NppParameters::getInstance()->_dpiManager.scaleY(13);
+			int fontDpiDynamicalHeight = NppParameters::getInstance()._dpiManager.scaleY(13);
 			HFONT hFont = ::CreateFontA(fontDpiDynamicalHeight, 0, 0, 0, 0, FALSE, FALSE, FALSE, ANSI_CHARSET,
 				OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 				DEFAULT_PITCH | FF_DONTCARE, "Courier New");
-			::SendMessage(::GetDlgItem(_hSelf, IDC_HASH_PATH_EDIT), WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
-			::SendMessage(::GetDlgItem(_hSelf, IDC_HASH_RESULT_EDIT), WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+
+			const HWND hHashPathEdit = ::GetDlgItem(_hSelf, IDC_HASH_PATH_EDIT);
+			const HWND hHashResult = ::GetDlgItem(_hSelf, IDC_HASH_RESULT_EDIT);
+
+			::SendMessage(hHashPathEdit, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+			::SendMessage(hHashResult, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+
+			::SetWindowLongPtr(hHashPathEdit, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+			_oldHashPathEditProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(hHashPathEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HashPathEditStaticProc)));
+
+			::SetWindowLongPtr(hHashResult, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+			_oldHashResultProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(hHashResult, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HashResultStaticProc)));
 		}
 		return TRUE;
 
@@ -64,8 +74,8 @@ INT_PTR CALLBACK HashFromFilesDlg::run_dlgProc(UINT message, WPARAM wParam, LPAR
 						{
 							if (_ht == hashType::hash_md5)
 							{
-								WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
-								const char *path = wmc->wchar2char(it.c_str(), CP_ACP);
+								WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+								const char *path = wmc.wchar2char(it.c_str(), CP_ACP);
 
 								MD5 md5;
 								char *md5Result = md5.digestFile(path);
@@ -76,7 +86,7 @@ INT_PTR CALLBACK HashFromFilesDlg::run_dlgProc(UINT message, WPARAM wParam, LPAR
 									files2check += TEXT("\r\n");
 
 									wchar_t* fileName = ::PathFindFileName(it.c_str());
-									hashResultStr += wmc->char2wchar(md5Result, CP_ACP);
+									hashResultStr += wmc.char2wchar(md5Result, CP_ACP);
 									hashResultStr += TEXT("  ");
 									hashResultStr += fileName;
 									hashResultStr += TEXT("\r\n");
@@ -138,6 +148,31 @@ INT_PTR CALLBACK HashFromFilesDlg::run_dlgProc(UINT message, WPARAM wParam, LPAR
 	return FALSE;	
 }
 
+LRESULT run_textEditProc(WNDPROC oldEditProc, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+		case WM_GETDLGCODE:
+		{
+			return DLGC_WANTALLKEYS | ::CallWindowProc(oldEditProc, hwnd, message, wParam, lParam);
+		}
+
+		case WM_CHAR:
+		{
+			if (wParam == 1) // Ctrl+A
+			{
+				::SendMessage(hwnd, EM_SETSEL, 0, -1);
+				return TRUE;
+			}
+			break;
+		}
+
+		default:
+			break;
+	}
+	return ::CallWindowProc(oldEditProc, hwnd, message, wParam, lParam);
+}
+
 void HashFromFilesDlg::setHashType(hashType hashType2set)
 {
 	_ht = hashType2set;
@@ -173,8 +208,8 @@ void HashFromTextDlg::generateHash()
 		// So we get the result of UTF8 text (tested with Chinese).
 		wchar_t *text = new wchar_t[len + 1];
 		::GetDlgItemText(_hSelf, IDC_HASH_TEXT_EDIT, text, len + 1);
-		WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
-		const char *newText = wmc->wchar2char(text, SC_CP_UTF8);
+		WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+		const char *newText = wmc.wchar2char(text, SC_CP_UTF8);
 		if (_ht == hash_md5)
 		{
 			MD5 md5;
@@ -212,7 +247,7 @@ void HashFromTextDlg::generateHashPerLine()
 		std::wstring aLine;
 		std::string result;
 		MD5 md5;
-		WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
+		WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 		while (std::getline(ss, aLine))
 		{
 			// getline() detect only '\n' but not "\r\n" under windows
@@ -224,7 +259,7 @@ void HashFromTextDlg::generateHashPerLine()
 				result += "\r\n";
 			else
 			{
-				const char *newText = wmc->wchar2char(aLine.c_str(), SC_CP_UTF8);
+				const char *newText = wmc.wchar2char(aLine.c_str(), SC_CP_UTF8);
 
 				if (_ht == hash_md5)
 				{
@@ -261,12 +296,22 @@ INT_PTR CALLBACK HashFromTextDlg::run_dlgProc(UINT message, WPARAM wParam, LPARA
 	{
 		case WM_INITDIALOG:
 		{
-			int fontDpiDynamicalHeight = NppParameters::getInstance()->_dpiManager.scaleY(13);
+			int fontDpiDynamicalHeight = NppParameters::getInstance()._dpiManager.scaleY(13);
 			HFONT hFont = ::CreateFontA(fontDpiDynamicalHeight, 0, 0, 0, 0, FALSE, FALSE, FALSE, ANSI_CHARSET,
 				OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 				DEFAULT_PITCH | FF_DONTCARE, "Courier New");
-			::SendMessage(::GetDlgItem(_hSelf, IDC_HASH_TEXT_EDIT), WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
-			::SendMessage(::GetDlgItem(_hSelf, IDC_HASH_RESULT_FOMTEXT_EDIT), WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+
+			const HWND hHashTextEdit = ::GetDlgItem(_hSelf, IDC_HASH_TEXT_EDIT);
+			const HWND hHashResult = ::GetDlgItem(_hSelf, IDC_HASH_RESULT_FOMTEXT_EDIT);
+
+			::SendMessage(hHashTextEdit, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+			::SendMessage(hHashResult, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+
+			::SetWindowLongPtr(hHashTextEdit, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+			_oldHashTextEditProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(hHashTextEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HashTextEditStaticProc)));
+
+			::SetWindowLongPtr(hHashResult, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+			_oldHashResultProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(hHashResult, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HashResultStaticProc)));
 		}
 		return TRUE;
 

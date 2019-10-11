@@ -106,8 +106,10 @@ public:
 	bool deleteFile(BufferID id);
 	bool moveFile(BufferID id, const TCHAR * newFilename);
 	bool createEmptyFile(const TCHAR * path);
-	static FileManager * getInstance() {return _pSelf;};
-	void destroyInstance() { delete _pSelf; };
+	static FileManager& getInstance() {
+		static FileManager instance;
+		return instance;
+	};
 	int getFileNameFromBuffer(BufferID id, TCHAR * fn2copy);
 	int docLength(Buffer * buffer) const;
 	size_t nextUntitledNewNumber() const;
@@ -115,20 +117,29 @@ public:
 
 private:
 	struct LoadedFileFormat {
-		LoadedFileFormat() {};
-		LangType _language;
-		int _encoding;
-		EolType _eolFormat;
+		LoadedFileFormat() = default;
+		LangType _language = L_TEXT;
+		int _encoding = 0;
+		EolType _eolFormat = EolType::osdefault;
 	};
+
+	FileManager() = default;
 	~FileManager();
+
+	// No copy ctor and assignment
+	FileManager(const FileManager&) = delete;
+	FileManager& operator=(const FileManager&) = delete;
+
+	// No move ctor and assignment
+	FileManager(FileManager&&) = delete;
+	FileManager& operator=(FileManager&&) = delete;
+
 	int detectCodepage(char* buf, size_t len);
 	bool loadFileData(Document doc, const TCHAR* filename, char* buffer, Utf8_16_Read* UnicodeConvertor, LoadedFileFormat& fileFormat);
 	LangType detectLanguageFromTextBegining(const unsigned char *data, size_t dataLen);
 
 
 private:
-	static FileManager *_pSelf;
-
 	Notepad_plus* _pNotepadPlus = nullptr;
 	ScintillaEditView* _pscratchTilla = nullptr;
 	Document _scratchDocDefault;
@@ -326,7 +337,7 @@ public:
 	bool isModified() const { return _isModified; }
 	void setModifiedStatus(bool isModified) { _isModified = isModified; }
 	generic_string getBackupFileName() const { return _backupFileName; }
-	void setBackupFileName(generic_string fileName) { _backupFileName = fileName; }
+	void setBackupFileName(const generic_string& fileName) { _backupFileName = fileName; }
 	FILETIME getLastModifiedTimestamp() const { return _timeStamp; }
 
 	bool isLoadedDirty() const

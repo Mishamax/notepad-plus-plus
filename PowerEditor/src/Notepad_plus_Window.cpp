@@ -93,8 +93,8 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const TCHAR *cmdLin
 		throw std::runtime_error("Notepad_plus_Window::init : RegisterClass() function failed");
 	}
 
-	NppParameters *pNppParams = NppParameters::getInstance();
-	NppGUI & nppGUI = const_cast<NppGUI &>(pNppParams->getNppGUI());
+	NppParameters& nppParams = NppParameters::getInstance();
+	NppGUI & nppGUI = const_cast<NppGUI &>(nppParams.getNppGUI());
 
 	if (cmdLineParams->_isNoPlugin)
 		_notepad_plus_plus_core._pluginsManager.disable();
@@ -185,16 +185,17 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const TCHAR *cmdLin
 		_notepad_plus_plus_core._pTrayIco->doTrayIcon(ADD);
 	}
 
+	std::vector<generic_string> fns;
 	if (cmdLine)
-		_notepad_plus_plus_core.loadCommandlineParams(cmdLine, cmdLineParams);
+		fns = _notepad_plus_plus_core.loadCommandlineParams(cmdLine, cmdLineParams);
 
 	std::vector<generic_string> fileNames;
 	std::vector<generic_string> patterns;
 	patterns.push_back(TEXT("*.xml"));
 
-	generic_string nppDir = pNppParams->getNppPath();
+	generic_string nppDir = nppParams.getNppPath();
 
-	LocalizationSwitcher & localizationSwitcher = pNppParams->getLocalizationSwitcher();
+	LocalizationSwitcher & localizationSwitcher = nppParams.getLocalizationSwitcher();
 	std::wstring localizationDir = nppDir;
 	PathAppend(localizationDir, TEXT("localization\\"));
 
@@ -203,15 +204,15 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const TCHAR *cmdLin
 		localizationSwitcher.addLanguageFromXml(fileNames[i].c_str());
 
 	fileNames.clear();
-	ThemeSwitcher & themeSwitcher = pNppParams->getThemeSwitcher();
+	ThemeSwitcher & themeSwitcher = nppParams.getThemeSwitcher();
 
 	//  Get themes from both npp install themes dir and app data themes dir with the per user
 	//  overriding default themes of the same name.
 
 	generic_string themeDir;
-    if (pNppParams->getAppDataNppDir() && pNppParams->getAppDataNppDir()[0])
+    if (nppParams.getAppDataNppDir() && nppParams.getAppDataNppDir()[0])
     {
-        themeDir = pNppParams->getAppDataNppDir();
+        themeDir = nppParams.getAppDataNppDir();
 	    PathAppend(themeDir, TEXT("themes\\"));
 	    _notepad_plus_plus_core.getMatchedFileNames(themeDir.c_str(), patterns, fileNames, false, false);
 	    for (size_t i = 0, len = fileNames.size() ; i < len ; ++i)
@@ -234,8 +235,16 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const TCHAR *cmdLin
 		}
 	}
 
+	// Restore all dockable panels from the last session
 	for (size_t i = 0, len = _notepad_plus_plus_core._internalFuncIDs.size() ; i < len ; ++i)
 		::SendMessage(_hSelf, WM_COMMAND, _notepad_plus_plus_core._internalFuncIDs[i], 0);
+
+	// Launch folder as workspace after all this dockable panel being restored from the last session
+	// To avoid dockable panel toggle problem.
+	if (cmdLineParams->_openFoldersAsWorkspace)
+	{
+		_notepad_plus_plus_core.launchFileBrowser(fns, true);
+	}
 
 	// Notify plugins that Notepad++ is ready
 	SCNotification scnN;
@@ -276,8 +285,8 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const TCHAR *cmdLin
 			if (::PathFileExists(cmdLineParams->_easterEggName.c_str()))
 			{
 				std::string content = getFileContent(cmdLineParams->_easterEggName.c_str());
-				WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
-				_userQuote = wmc->char2wchar(content.c_str(), SC_CP_UTF8);
+				WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+				_userQuote = wmc.char2wchar(content.c_str(), SC_CP_UTF8);
 				if (!_userQuote.empty())
 				{
 					_quoteParams.reset();
@@ -319,10 +328,10 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const TCHAR *cmdLin
 	// Make this call later to take effect
 	::SendMessage(_hSelf, NPPM_INTERNAL_SETWORDCHARS, 0, 0);
 
-	if (pNppParams->doFunctionListExport())
+	if (nppParams.doFunctionListExport())
 		::SendMessage(_hSelf, NPPM_INTERNAL_EXPORTFUNCLISTANDQUIT, 0, 0);
 
-	if (pNppParams->doPrintAndExit())
+	if (nppParams.doPrintAndExit())
 		::SendMessage(_hSelf, NPPM_INTERNAL_PRNTANDQUIT, 0, 0);
 }
 

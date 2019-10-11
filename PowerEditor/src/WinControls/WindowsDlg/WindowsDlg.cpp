@@ -159,8 +159,8 @@ struct BufferEquivalent
 		{
 			BufferID bid1 = _pTab->getBufferByIndex(i1);
 			BufferID bid2 = _pTab->getBufferByIndex(i2);
-			Buffer * b1 = MainFileManager->getBufferByID(bid1);
-			Buffer * b2 = MainFileManager->getBufferByID(bid2);
+			Buffer * b1 = MainFileManager.getBufferByID(bid1);
+			Buffer * b2 = MainFileManager.getBufferByID(bid2);
 			
 			if (_iColumn == 0)
 			{
@@ -243,7 +243,7 @@ INT_PTR CALLBACK WindowsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPa
 	{
 		case WM_INITDIALOG :
 		{
-			NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+			NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 			pNativeSpeaker->changeDlgLang(_hSelf, "Window");
 			return MyBaseClass::run_dlgProc(message, wParam, lParam);
 		}
@@ -321,7 +321,7 @@ INT_PTR CALLBACK WindowsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPa
 
 						//const Buffer& buffer = _pView->getBufferAt(index);
 						BufferID bufID = _pTab->getBufferByIndex(index);
-						Buffer * buf = MainFileManager->getBufferByID(bufID);
+						Buffer * buf = MainFileManager.getBufferByID(bufID);
 						if (pLvdi->item.iSubItem == 0) // file name
 						{
 							int len = pLvdi->item.cchTextMax;
@@ -361,8 +361,8 @@ INT_PTR CALLBACK WindowsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPa
 						else if (pLvdi->item.iSubItem == 2) // Type
 						{
 							int len = pLvdi->item.cchTextMax;
-							NppParameters *pNppParameters = NppParameters::getInstance();
-							Lang *lang = pNppParameters->getLangFromID(buf->getLangType());
+							NppParameters& nppParameters = NppParameters::getInstance();
+							Lang *lang = nppParameters.getLangFromID(buf->getLangType());
 							if (NULL != lang)
 							{
 								generic_strncpy(pLvdi->item.pszText, lang->getLangName(), len-1);
@@ -502,7 +502,7 @@ BOOL WindowsDlg::onInitDialog()
 	lvColumn.fmt = LVCFMT_LEFT;
 	
 	generic_string columnText;
-	NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+	NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 
 	columnText = TEXT("\u21F5 ") + pNativeSpeaker->getAttrNameStr(TEXT("Name"), WD_ROOTNODE, WD_CLMNNAME);
 	lvColumn.pszText = const_cast<TCHAR *>(columnText.c_str());
@@ -544,7 +544,7 @@ void WindowsDlg::updateColumnNames()
 	lvColumn.fmt = LVCFMT_LEFT;
 
 	generic_string columnText;
-	NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+	NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 	
 	columnText = pNativeSpeaker->getAttrNameStr(TEXT("Name"), WD_ROOTNODE, WD_CLMNNAME);
 	if (_currentColumn != 0)
@@ -780,7 +780,7 @@ void WindowsDlg::doClose()
 						--(*itr);
 			}
 		}
-		_idxMap.erase(std::remove_if(_idxMap.begin(), _idxMap.end(), bind2nd(equal_to<int>(), -1)), _idxMap.end());
+		_idxMap.erase(remove_if(_idxMap.begin(), _idxMap.end(), bind(equal_to<int>(), placeholders::_1, -1)), _idxMap.end());
 	}
 	delete[] nmdlg.Items;
 
@@ -888,7 +888,7 @@ void WindowsMenu::initPopupMenu(HMENU hMenu, DocTabView *pTab)
 		for (id = IDM_WINDOW_MRU_FIRST, pos = 0; id < IDM_WINDOW_MRU_FIRST + static_cast<int32_t>(nDoc); ++id, ++pos)
 		{
 			BufferID bufID = pTab->getBufferByIndex(pos);
-			Buffer * buf = MainFileManager->getBufferByID(bufID);
+			Buffer * buf = MainFileManager.getBufferByID(bufID);
 
 			MENUITEMINFO mii;
 			memset(&mii, 0, sizeof(mii));

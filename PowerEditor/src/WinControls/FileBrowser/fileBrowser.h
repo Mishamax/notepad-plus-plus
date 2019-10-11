@@ -58,12 +58,12 @@ friend class FileBrowser;
 friend class FolderInfo;
 
 public:
+	FileInfo() = delete; // constructor by default is forbidden
 	FileInfo(const generic_string & name, FolderInfo *parent) : _name(name), _parent(parent) {};
 	generic_string getName() const { return _name; };
 	void setName(generic_string name) { _name = name; };
 
 private:
-	FileInfo(){}; // constructor by default is forbidden
 	FolderInfo *_parent = nullptr;
 	generic_string _name;
 };
@@ -75,6 +75,7 @@ friend class FileBrowser;
 friend class FolderUpdater;
 
 public:
+	FolderInfo() = delete; // constructor by default is forbidden
 	FolderInfo(const generic_string & name, FolderInfo *parent) : _name(name), _parent(parent) {};
 	void setRootPath(const generic_string& rootPath) { _rootPath = rootPath; };
 	generic_string getRootPath() const { return _rootPath; };
@@ -88,7 +89,6 @@ public:
 	bool renameInStructure(std::vector<generic_string> linarPathArrayFrom, std::vector<generic_string> linarPathArrayTo);
 
 private:
-	FolderInfo(){}; // constructor by default is forbidden
 	std::vector<FolderInfo> _subFolders;
 	std::vector<FileInfo> _files;
 	FolderInfo *_parent = nullptr;
@@ -103,9 +103,8 @@ enum BrowserNodeType {
 class FolderUpdater {
 friend class FileBrowser;
 public:
-	FolderUpdater(FolderInfo fi, FileBrowser *pFileBrowser) : _rootFolder(fi), _pFileBrowser(pFileBrowser) {};
-	~FolderUpdater() {};
-	//bool updateTree(DWORD action, const std::vector<generic_string> & file2Change); // postMessage to FileBrowser to upgrade GUI
+	FolderUpdater(const FolderInfo& fi, FileBrowser *pFileBrowser) : _rootFolder(fi), _pFileBrowser(pFileBrowser) {};
+	~FolderUpdater() = default;
 
 	void startWatcher();
 	void stopWatcher();
@@ -147,12 +146,16 @@ public:
 	void addRootFolder(generic_string);
 
 	HTREEITEM getRootFromFullPath(const generic_string & rootPath) const;
-	HTREEITEM findChildNodeFromName(HTREEITEM parent, generic_string);
+	HTREEITEM findChildNodeFromName(HTREEITEM parent, const generic_string&);
 
 	bool addInTree(const generic_string& rootPath, const generic_string& addItemFullPath, HTREEITEM node, std::vector<generic_string> linarPathArray);
 	HTREEITEM findInTree(const generic_string& rootPath, HTREEITEM node, std::vector<generic_string> linarPathArray);
-	bool deleteFromTree(const generic_string& rootPath, HTREEITEM node, std::vector<generic_string> linarPathArray);
-	bool renameInTree(const generic_string& rootPath, HTREEITEM node, std::vector<generic_string> linarPathArrayFrom, const generic_string & renameTo);
+	bool deleteFromTree(const generic_string& rootPath, HTREEITEM node, const std::vector<generic_string>& linarPathArray);
+	void deleteAllFromTree() {
+		popupMenuCmd(IDM_FILEBROWSER_REMOVEALLROOTS);
+	};
+
+	bool renameInTree(const generic_string& rootPath, HTREEITEM node, const std::vector<generic_string>& linarPathArrayFrom, const generic_string & renameTo);
 
 	std::vector<generic_string> getRoots() const;
 	generic_string getSelectedItemPath() const;

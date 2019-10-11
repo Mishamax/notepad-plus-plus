@@ -246,7 +246,7 @@ INT_PTR CALLBACK FileBrowser::run_dlgProc(UINT message, WPARAM wParam, LPARAM lP
 
 void FileBrowser::initPopupMenus()
 {
-	NativeLangSpeaker* pNativeSpeaker = NppParameters::getInstance()->getNativeLangSpeaker();
+	NativeLangSpeaker* pNativeSpeaker = NppParameters::getInstance().getNativeLangSpeaker();
 
 	generic_string addRoot = pNativeSpeaker->getFileBrowserLangMenuStr(IDM_FILEBROWSER_ADDROOT, FB_ADDROOT);
 	generic_string removeAllRoot = pNativeSpeaker->getFileBrowserLangMenuStr(IDM_FILEBROWSER_REMOVEALLROOTS, FB_REMOVEALLROOTS);
@@ -643,9 +643,8 @@ void FileBrowser::popupMenuCmd(int cmdID)
 
 	switch (cmdID)
 	{
-
 		//
-		// Toolbar menu commands
+		// FileBrowser menu commands
 		//
 		case IDM_FILEBROWSER_REMOVEROOTFOLDER:
 		{
@@ -749,7 +748,7 @@ void FileBrowser::popupMenuCmd(int cmdID)
 
 		case IDM_FILEBROWSER_ADDROOT:
 		{
-			NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
+			NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 			generic_string openWorkspaceStr = pNativeSpeaker->getAttrNameStr(TEXT("Select a folder to add in Folder as Workspace panel"), "FolderAsWorkspace", "SelectFolderFromBrowserString");
 			generic_string folderPath = folderBrowser(_hParent, openWorkspaceStr.c_str());
 			if (!folderPath.empty())
@@ -877,7 +876,10 @@ bool isRelatedRootFolder(const generic_string & relatedRoot, const generic_strin
 
 void FileBrowser::addRootFolder(generic_string rootFolderPath)
 {
-	if (not ::PathFileExists(rootFolderPath.c_str()))
+	if (!::PathFileExists(rootFolderPath.c_str()))
+		return;
+
+	if (!::PathIsDirectory(rootFolderPath.c_str()))
 		return;
 
 	// make sure there's no '\' at the end
@@ -908,7 +910,7 @@ void FileBrowser::addRootFolder(generic_string rootFolderPath)
 			
 			if (isRelatedRootFolder(rootFolderPath, _folderUpdaters[i]->_rootFolder._rootPath))
 			{
-				NppParameters::getInstance()->getNativeLangSpeaker()->messageBox("FolderAsWorspaceSubfolderExists",
+				NppParameters::getInstance().getNativeLangSpeaker()->messageBox("FolderAsWorspaceSubfolderExists",
 					_hParent,
 					TEXT("A sub-folder of the folder you want to add exists.\rPlease remove its root from the panel before you add folder \"$STR_REPLACE$\"."),
 					TEXT("Folder as Worspace adding folder problem"),
@@ -988,7 +990,7 @@ HTREEITEM FileBrowser::getRootFromFullPath(const generic_string & rootPath) cons
 	return node;
 }
 
-HTREEITEM FileBrowser::findChildNodeFromName(HTREEITEM parent, generic_string label)
+HTREEITEM FileBrowser::findChildNodeFromName(HTREEITEM parent, const generic_string& label)
 {
 	HTREEITEM childNodeFound = nullptr;
 
@@ -1137,8 +1139,8 @@ HTREEITEM FileBrowser::findInTree(const generic_string& rootPath, HTREEITEM node
 	}
 }
 
-bool FileBrowser::deleteFromTree(const generic_string& rootPath, HTREEITEM node, std::vector<generic_string> linarPathArray)
-	{
+bool FileBrowser::deleteFromTree(const generic_string& rootPath, HTREEITEM node, const std::vector<generic_string>& linarPathArray)
+{
 	HTREEITEM foundItem = findInTree(rootPath, node, linarPathArray);
 	if (foundItem == nullptr)
 			return false;
@@ -1146,10 +1148,10 @@ bool FileBrowser::deleteFromTree(const generic_string& rootPath, HTREEITEM node,
 	// found it, delete it
 	_treeView.removeItem(foundItem);
 	return true;
-	}
+}
 
-bool FileBrowser::renameInTree(const generic_string& rootPath, HTREEITEM node, std::vector<generic_string> linarPathArrayFrom, const generic_string & renameTo)
-	{
+bool FileBrowser::renameInTree(const generic_string& rootPath, HTREEITEM node, const std::vector<generic_string>& linarPathArrayFrom, const generic_string & renameTo)
+{
 	HTREEITEM foundItem = findInTree(rootPath, node, linarPathArrayFrom);
 	if (foundItem == nullptr)
 			return false;
@@ -1351,12 +1353,10 @@ DWORD WINAPI FolderUpdater::watching(void *params)
 			// We've received a notification in the queue.
 			{
 				DWORD dwAction;
-				CStringW wstrFilename;
-				if (changes.CheckOverflow())
-					printStr(L"Queue overflowed.");
-				else
+				generic_string wstrFilename;
+				// Process all available changes, ignore User actions
+				while (changes.Pop(dwAction, wstrFilename))
 				{
-					changes.Pop(dwAction, wstrFilename);
 					static generic_string oldName;
 					static std::vector<generic_string> file2Change;
 					file2Change.clear();
@@ -1364,14 +1364,14 @@ DWORD WINAPI FolderUpdater::watching(void *params)
 					switch (dwAction)
 					{
 						case FILE_ACTION_ADDED:
-							file2Change.push_back(wstrFilename.GetString());
+							file2Change.push_back(wstrFilename);
 							//thisFolderUpdater->updateTree(dwAction, file2Change);
 							::SendMessage((thisFolderUpdater->_pFileBrowser)->getHSelf(), FB_ADDFILE, reinterpret_cast<WPARAM>(nullptr), reinterpret_cast<LPARAM>(&file2Change));
 							oldName = TEXT("");
 							break;
 
 						case FILE_ACTION_REMOVED:
-							file2Change.push_back(wstrFilename.GetString());
+							file2Change.push_back(wstrFilename);
 							//thisFolderUpdater->updateTree(dwAction, file2Change);
 							::SendMessage((thisFolderUpdater->_pFileBrowser)->getHSelf(), FB_RMFILE, reinterpret_cast<WPARAM>(nullptr), reinterpret_cast<LPARAM>(&file2Change));
 							oldName = TEXT("");
@@ -1382,14 +1382,14 @@ DWORD WINAPI FolderUpdater::watching(void *params)
 							break;
 
 						case FILE_ACTION_RENAMED_OLD_NAME:
-							oldName = wstrFilename.GetString();
+							oldName = wstrFilename;
 							break;
 
 						case FILE_ACTION_RENAMED_NEW_NAME:
 							if (not oldName.empty())
 							{
 								file2Change.push_back(oldName);
-								file2Change.push_back(wstrFilename.GetString());
+								file2Change.push_back(wstrFilename);
 								//thisFolderUpdater->updateTree(dwAction, file2Change);
 								::SendMessage((thisFolderUpdater->_pFileBrowser)->getHSelf(), FB_RNFILE, reinterpret_cast<WPARAM>(nullptr), reinterpret_cast<LPARAM>(&file2Change));
 							}

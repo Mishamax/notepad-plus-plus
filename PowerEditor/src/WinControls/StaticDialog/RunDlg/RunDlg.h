@@ -39,9 +39,9 @@ void expandNppEnvironmentStrs(const TCHAR *strSrc, TCHAR *stringDest, size_t str
 
 class Command {
 public :
-	Command(){};
+	Command() = default;
 	explicit Command(TCHAR *cmd) : _cmdLine(cmd){};
-	explicit Command(generic_string cmd) : _cmdLine(cmd){};
+	explicit Command(const generic_string& cmd) : _cmdLine(cmd){};
 	HINSTANCE run(HWND hWnd);
 	HINSTANCE run(HWND hWnd, const TCHAR* cwd);
 
@@ -54,7 +54,7 @@ private :
 class RunDlg : public Command, public StaticDialog
 {
 public :
-	RunDlg() : StaticDialog() {};
+	RunDlg() = default;
 
 	void doDialog(bool isRTL = false);
     virtual void destroy() {};

@@ -57,13 +57,13 @@ void SmartHighlighter::highlightViewWithWord(ScintillaEditView * pHighlightView,
 	bool isWordOnly = true;
 	bool isCaseSensentive = true;
 
-	const NppGUI & nppGUI = NppParameters::getInstance()->getNppGUI();
+	const NppGUI & nppGUI = NppParameters::getInstance().getNppGUI();
 
 	if (nppGUI._smartHiliteUseFindSettings)
 	{
 		// fetch find dialog's setting
-		NppParameters *nppParams = NppParameters::getInstance();
-		FindHistory &findHistory = nppParams->getFindHistory();
+		NppParameters& nppParams = NppParameters::getInstance();
+		FindHistory &findHistory = nppParams.getFindHistory();
 		isWordOnly = findHistory._isMatchWord;
 		isCaseSensentive = findHistory._isMatchCase;
 	}
@@ -112,7 +112,7 @@ void SmartHighlighter::highlightView(ScintillaEditView * pHighlightView, Scintil
 	// Clear marks
 	pHighlightView->clearIndicator(SCE_UNIVERSAL_FOUND_STYLE_SMART);
 
-	const NppGUI & nppGUI = NppParameters::getInstance()->getNppGUI();
+	const NppGUI & nppGUI = NppParameters::getInstance().getNppGUI();
 
 	// If nothing selected or smart highlighting disabled, don't mark anything
 	if ((!nppGUI._enableSmartHilite) || (pHighlightView->execute(SCI_GETSELECTIONEMPTY) == 1))
@@ -135,8 +135,8 @@ void SmartHighlighter::highlightView(ScintillaEditView * pHighlightView, Scintil
 	if (nppGUI._smartHiliteUseFindSettings)
 	{
 		// fetch find dialog's setting
-		NppParameters *nppParams = NppParameters::getInstance();
-		FindHistory &findHistory = nppParams->getFindHistory();
+		NppParameters& nppParams = NppParameters::getInstance();
+		FindHistory &findHistory = nppParams.getFindHistory();
 		isWordOnly = findHistory._isMatchWord;
 	}
 	else
@@ -165,9 +165,9 @@ void SmartHighlighter::highlightView(ScintillaEditView * pHighlightView, Scintil
 	char * text2Find = new char[textlen];
 	pHighlightView->getSelectedText(text2Find, textlen, false); //do not expand selection (false)
 
-	WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
+	WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 	UINT cp = static_cast<UINT>(pHighlightView->execute(SCI_GETCODEPAGE));
-	const TCHAR * text2FindW = wmc->char2wchar(text2Find, cp);
+	const TCHAR * text2FindW = wmc.char2wchar(text2Find, cp);
 
 	highlightViewWithWord(pHighlightView, text2FindW);
 
