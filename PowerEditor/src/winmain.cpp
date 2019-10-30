@@ -304,8 +304,8 @@ PWSTR advanceCmdLine(PWSTR pCmdLine, const generic_string& string)
 		}
 	
 		// Match the substring only if it matched an entire substring		
-		if ( (ignoredString == pCmdLine || iswspace(*(ignoredString-1)) ) && // Check start
-			 (iswspace(*(ignoredString+len)) || *(ignoredString+len) == '\0') )
+		if ((ignoredString == pCmdLine || iswspace(*(ignoredString - 1))) && // Check start
+			(iswspace(*(ignoredString + len)) || *(ignoredString + len) == '\0' || *(ignoredString + len) == '"'))
 		{
 			ignoredString += len;
 
@@ -575,12 +575,23 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int)
 		if (doUpdatePluginList)
 		{
 			// Update Plugin List
-			updaterParams += TEXT(" -upPL");
+			generic_string upPlParams = TEXT("-v"); 
+			upPlParams += notepad_plus_plus.getPluginListVerStr();
+
+			if (nppParameters.isx64())
+			{
+				upPlParams += TEXT(" -px64");
+			}
+
+			upPlParams += TEXT(" -upZip");
 
 			// overrided "InfoUrl" in gup.xml
-			updaterParams += TEXT(" https://notepad-plus-plus.org/update/pluginListDownloadUrl.php");
+			upPlParams += TEXT(" https://notepad-plus-plus.org/update/pluginListDownloadUrl.php");
 
-			Process updater(updaterFullPath.c_str(), updaterParams.c_str(), updaterDir.c_str());
+			// indicate the pluginList installation location
+			upPlParams += nppParameters.getPluginConfDir();
+
+			Process updater(updaterFullPath.c_str(), upPlParams.c_str(), updaterDir.c_str());
 			updater.run();
 
 			// TODO: Update next update date
