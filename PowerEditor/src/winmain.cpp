@@ -123,8 +123,8 @@ ParamVector convertParamsToNotepadStyle(PWSTR pCmdLine)
 		{
 			str.append(TEXT(".txt")); // If joined path has no extension, Notepad adds a .txt extension
 		}
-		params.push_back(std::move(str));
 #endif
+		params.push_back(std::move(str));
 
 	}
 	return params;
