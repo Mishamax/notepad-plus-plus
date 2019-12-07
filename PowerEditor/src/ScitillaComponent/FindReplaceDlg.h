@@ -330,6 +330,7 @@ public :
 	};
 
 	void execSavedCommand(int cmd, uptr_t intValue, const generic_string& stringValue);
+	void clearMarks(const FindOption& opt);
 	void setStatusbarMessage(const generic_string & msg, FindStatus staus);
 	Finder * createFinder();
 	bool removeFinder(Finder *finder2remove);
@@ -361,7 +362,7 @@ private :
 
 	HWND _shiftTrickUpTip = nullptr;
 	HWND _2ButtonsTip = nullptr;
-
+	HWND _filterTip = nullptr;
 
 	bool _isRTL = false;
 

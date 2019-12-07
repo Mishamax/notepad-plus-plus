@@ -235,7 +235,7 @@ BEGIN
             MENUITEM "Explorer",       IDM_FILE_OPEN_FOLDER
             MENUITEM "cmd",            IDM_FILE_OPEN_CMD
 		END
-        MENUITEM "Open in Default Viewer"          IDM_FILE_OPEN_DEFAULT_VIEWER
+        MENUITEM "Open in Default Viewer",           IDM_FILE_OPEN_DEFAULT_VIEWER
 		MENUITEM "Open Folder as Workspace...",      IDM_FILE_OPENFOLDERASWORSPACE
         MENUITEM "Re&load from Disk",                IDM_FILE_RELOAD
         MENUITEM "&Save",                            IDM_FILE_SAVE
@@ -776,6 +776,7 @@ BEGIN
         MENUITEM "YAML",                    IDM_LANG_YAML
         MENUITEM SEPARATOR
         MENUITEM "Define your language...", IDM_LANG_USER_DLG
+        MENUITEM "Open User Defined Language folder...",      IDM_LANG_OPENUDLDIR
         MENUITEM "User-Defined",            IDM_LANG_USER
     END
 
@@ -919,7 +920,11 @@ BEGIN
     MENUITEM "XML",                       IDM_LANG_XML
     MENUITEM "YAML",                      IDM_LANG_YAML
     MENUITEM SEPARATOR
-    MENUITEM "Define your language...",   IDM_LANG_USER_DLG
+	POPUP "User Defined Language"
+	BEGIN
+		MENUITEM "Define your language...",   IDM_LANG_USER_DLG
+		MENUITEM "Open User Defined Language folder...",        IDM_LANG_OPENUDLDIR
+	END
     MENUITEM "User-Defined",              IDM_LANG_USER
     END
 
@@ -1042,11 +1047,11 @@ CAPTION "Save"
 FONT 8, TEXT("MS Shell Dlg"), 0, 0, 0x1
 BEGIN
     LTEXT           "",IDC_DOSAVEORNOTTEX,7,10,290,40
-    DEFPUSHBUTTON   "Yes",IDYES,10,60,50,14,BS_FLAT
-    PUSHBUTTON   "No",IDNO,65,60,50,14,BS_FLAT
-    PUSHBUTTON   "Cancel",IDCANCEL,120,60,50,14,BS_FLAT
-    PUSHBUTTON   "Yes to all",IDRETRY,175,60,60,14,BS_FLAT
-    PUSHBUTTON   "No to all",IDIGNORE,240,60,60,14,BS_FLAT
+    DEFPUSHBUTTON   "&Yes",IDYES,10,60,50,14,BS_FLAT
+    PUSHBUTTON   "&No",IDNO,65,60,50,14,BS_FLAT
+    PUSHBUTTON   "&Cancel",IDCANCEL,120,60,50,14,BS_FLAT
+    PUSHBUTTON   "Yes to &all",IDRETRY,175,60,60,14,BS_FLAT
+    PUSHBUTTON   "N&o to all",IDIGNORE,240,60,60,14,BS_FLAT
 END
 
 IDD_GOLINE DIALOGEX 26, 41, 261, 88

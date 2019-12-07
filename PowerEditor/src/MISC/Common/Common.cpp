@@ -31,6 +31,7 @@
 #include <uxtheme.h>
 #include <cassert>
 #include <codecvt>
+#include <locale>
 
 #include "StaticDialog.h"
 
@@ -972,12 +973,21 @@ bool str2Clipboard(const generic_string &str2cpy, HWND hwnd)
 
 bool matchInList(const TCHAR *fileName, const std::vector<generic_string> & patterns)
 {
+	bool is_matched = false;
 	for (size_t i = 0, len = patterns.size(); i < len; ++i)
 	{
+		if (patterns[i].length() > 1 && patterns[i][0] == '!')
+		{
+			if (PathMatchSpec(fileName, patterns[i].c_str() + 1))
+				return false;
+
+			continue;
+		} 
+
 		if (PathMatchSpec(fileName, patterns[i].c_str()))
-			return true;
+			is_matched = true;
 	}
-	return false;
+	return is_matched;
 }
 
 generic_string GetLastErrorAsString(DWORD errorCode)
@@ -1017,7 +1027,7 @@ HWND CreateToolTip(int toolID, HWND hDlg, HINSTANCE hInst, const PTSTR pszText)
 	}
 
 	// Create the tooltip. g_hInst is the global instance handle.
-	HWND hwndTip = CreateWindowEx(NULL, TOOLTIPS_CLASS, NULL,
+	HWND hwndTip = CreateWindowEx(0, TOOLTIPS_CLASS, NULL,
 		WS_POPUP | TTS_ALWAYSTIP | TTS_BALLOON,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		CW_USEDEFAULT, CW_USEDEFAULT,
@@ -1041,6 +1051,11 @@ HWND CreateToolTip(int toolID, HWND hDlg, HINSTANCE hInst, const PTSTR pszText)
 		DestroyWindow(hwndTip);
 		return NULL;
 	}
+
+	SendMessage(hwndTip, TTM_ACTIVATE, TRUE, 0);
+	SendMessage(hwndTip, TTM_SETMAXTIPWIDTH, 0, 200);
+	// Make tip stay 15 seconds
+	SendMessage(hwndTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM((15000), (0)));
 
 	return hwndTip;
 }

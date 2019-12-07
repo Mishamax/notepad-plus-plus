@@ -245,6 +245,9 @@ FindReplaceDlg::~FindReplaceDlg()
 	if (_2ButtonsTip)
 		::DestroyWindow(_2ButtonsTip);
 
+	if (_filterTip)
+		::DestroyWindow(_filterTip);
+
 	if (_hMonospaceFont)
 		::DeleteObject(_hMonospaceFont);
 
@@ -868,29 +871,15 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 			 _countInSelFramePos.top = countP.y - 9;
 
 			 NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
-			 generic_string searchButtonTip = pNativeSpeaker->getLocalizedStrFromID("shift-change-direction-tip", TEXT("Use Shift+Enter to search in the opposite direction."));
 
+			 generic_string searchButtonTip = pNativeSpeaker->getLocalizedStrFromID("shift-change-direction-tip", TEXT("Use Shift+Enter to search in the opposite direction."));
 			 _shiftTrickUpTip = CreateToolTip(IDOK, _hSelf, _hInst, const_cast<PTSTR>(searchButtonTip.c_str()));
 
-			 if (_shiftTrickUpTip)
-			 {
-				 SendMessage(_shiftTrickUpTip, TTM_ACTIVATE, TRUE, 0);
-				 SendMessage(_shiftTrickUpTip, TTM_SETMAXTIPWIDTH, 0, 200);
-				 // Make tip stay 15 seconds
-				 SendMessage(_shiftTrickUpTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM((15000), (0)));
-			 }
-
 			 generic_string checkboxTip = pNativeSpeaker->getLocalizedStrFromID("two-find-buttons-tip", TEXT("2 find buttons mode"));
-
 			 _2ButtonsTip = CreateToolTip(IDC_2_BUTTONS_MODE, _hSelf, _hInst, const_cast<PTSTR>(checkboxTip.c_str()));
 
-			 if (_2ButtonsTip)
-			 {
-				 SendMessage(_2ButtonsTip, TTM_ACTIVATE, TRUE, 0);
-				 SendMessage(_2ButtonsTip, TTM_SETMAXTIPWIDTH, 0, 200);
-				 // Make tip stay 15 seconds
-				 SendMessage(_2ButtonsTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM((15000), (0)));
-			 }
+			 generic_string findInFilesFilterTip = pNativeSpeaker->getLocalizedStrFromID("find-in-files-filter-tip", TEXT("Find in cpp, cxx, h, hxx && hpp:\r*.cpp *.cxx *.h *.hxx *.hpp\r\rFind in all files except exe, obj && log:\r*.* !*.exe !*.obj !*.log"));
+			 _filterTip = CreateToolTip(IDD_FINDINFILES_FILTERS_STATIC, _hSelf, _hInst, const_cast<PTSTR>(findInFilesFilterTip.c_str()));
 
 			::SetWindowTextW(::GetDlgItem(_hSelf, IDC_FINDPREV), TEXT("▲"));
 			::SetWindowTextW(::GetDlgItem(_hSelf, IDC_FINDNEXT), TEXT("▼ Find Next"));
@@ -957,8 +946,8 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 						_options._isInSelection = true;
 					}
 				}
-				// Searching/replacing in column selection is not allowed 
-				if ((*_ppEditView)->execute(SCI_GETSELECTIONMODE) == SC_SEL_RECTANGLE)
+				// Searching/replacing in multiple selections or column selection is not allowed 
+				if (((*_ppEditView)->execute(SCI_GETSELECTIONMODE) == SC_SEL_RECTANGLE) || ((*_ppEditView)->execute(SCI_GETSELECTIONS) > 1))
 				{
 					checkVal = BST_UNCHECKED;
 					_options._isInSelection = false;
@@ -1366,12 +1355,7 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 					if (_currentStatus == MARK_DLG)
 					{
 						if (isMacroRecording) saveInMacro(wParam, FR_OP_FIND);
-						(*_ppEditView)->clearIndicator(SCE_UNIVERSAL_FOUND_STYLE);
-						if (_options._doMarkLine)
-						{
-							(*_ppEditView)->execute(SCI_MARKERDELETEALL, MARK_BOOKMARK);
-						}
-						setStatusbarMessage(TEXT(""), FSNoMessage);
+						clearMarks(_options);
 					}
 				}
 				return TRUE;
@@ -1998,9 +1982,7 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 	if (op == ProcessMarkAll && colourStyleID == -1)	//if marking, check if purging is needed
 	{
 		if (_env->_doPurge) {
-			pEditView->clearIndicator(SCE_UNIVERSAL_FOUND_STYLE);
-			if (_env->_doMarkLine)
-				pEditView->execute(SCI_MARKERDELETEALL, MARK_BOOKMARK);
+			clearMarks(*_env);
 		}
 	}
 
@@ -2579,6 +2561,7 @@ void FindReplaceDlg::saveInMacro(size_t cmd, int cmdType)
 	if (cmd == IDC_CLEAR_ALL)
 	{
 		booleans = _options._doMarkLine ? IDF_MARKLINE_CHECK : 0;
+		booleans |= _options._isInSelection ? IDF_IN_SELECTION_CHECK : 0;
 	}
 	::SendMessage(_hParent, WM_FRSAVE_INT, IDC_FRCOMMAND_BOOLEANS, booleans);
 	::SendMessage(_hParent, WM_FRSAVE_INT, IDC_FRCOMMAND_EXEC, cmd);
@@ -2811,12 +2794,7 @@ void FindReplaceDlg::execSavedCommand(int cmd, uptr_t intValue, const generic_st
 
 					case IDC_CLEAR_ALL:
 					{
-						(*_ppEditView)->clearIndicator(SCE_UNIVERSAL_FOUND_STYLE);
-						if (_env->_doMarkLine)
-						{
-							(*_ppEditView)->execute(SCI_MARKERDELETEALL, MARK_BOOKMARK);
-						}
-						setStatusbarMessage(TEXT(""), FSNoMessage);
+						clearMarks(*_env);
 						break;
 					}
 
@@ -2836,6 +2814,44 @@ void FindReplaceDlg::execSavedCommand(int cmd, uptr_t intValue, const generic_st
 	{
 		MessageBoxA(NULL, err.what(), "Play Macro Exception", MB_OK);
 	}
+}
+
+void FindReplaceDlg::clearMarks(const FindOption& opt)
+{
+	if (opt._isInSelection)
+	{
+		Sci_CharacterRange cr = (*_ppEditView)->getSelection();
+
+		int startPosition = cr.cpMin;
+		int endPosition = cr.cpMax;
+
+		(*_ppEditView)->execute(SCI_SETINDICATORCURRENT, SCE_UNIVERSAL_FOUND_STYLE);
+		(*_ppEditView)->execute(SCI_INDICATORCLEARRANGE, startPosition, endPosition);
+
+		if (opt._doMarkLine)
+		{
+			auto lineNumber = (*_ppEditView)->execute(SCI_LINEFROMPOSITION, startPosition);
+			auto lineNumberEnd = (*_ppEditView)->execute(SCI_LINEFROMPOSITION, endPosition - 1);
+
+			for (auto i = lineNumber; i <= lineNumberEnd; ++i)
+			{
+				auto state = (*_ppEditView)->execute(SCI_MARKERGET, i);
+
+				if (state & (1 << MARK_BOOKMARK))
+					(*_ppEditView)->execute(SCI_MARKERDELETE, i, MARK_BOOKMARK);
+			}
+		}
+	}
+	else
+	{
+		(*_ppEditView)->clearIndicator(SCE_UNIVERSAL_FOUND_STYLE);
+		if (opt._doMarkLine)
+		{
+			(*_ppEditView)->execute(SCI_MARKERDELETEALL, MARK_BOOKMARK);
+		}
+	}
+
+	setStatusbarMessage(TEXT(""), FSNoMessage);
 }
 
 void FindReplaceDlg::setFindInFilesDirFilter(const TCHAR *dir, const TCHAR *filters)

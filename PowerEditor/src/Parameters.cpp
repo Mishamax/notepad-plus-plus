@@ -369,6 +369,7 @@ static const WinMenuKeyDefinition winKeyDefs[] =
 
 	{ VK_NULL,    IDM_LANG_USER_DLG,                            false, false, false, nullptr },
 	{ VK_NULL,    IDM_LANG_USER,                                false, false, false, nullptr },
+	{ VK_NULL,    IDM_LANG_OPENUDLDIR,                          false, false, false, nullptr },
 
 	{ VK_NULL,    IDM_SETTING_PREFERENCE,                       false, false, false, nullptr },
 	{ VK_NULL,    IDM_LANGSTYLE_CONFIG_DLG,                     false, false, false, nullptr },
@@ -1229,12 +1230,12 @@ bool NppParameters::load()
 	//-----------------------------------//
 	// userDefineLang.xml : for per user //
 	//-----------------------------------//
-	generic_string userDefineLangsFolderPath = _userDefineLangPath = _userPath;
+	_userDefineLangsFolderPath = _userDefineLangPath = _userPath;
 	PathAppend(_userDefineLangPath, TEXT("userDefineLang.xml"));
-	PathAppend(userDefineLangsFolderPath, TEXT("userDefineLangs"));
+	PathAppend(_userDefineLangsFolderPath, TEXT("userDefineLangs"));
 
 	std::vector<generic_string> udlFiles;
-	getFilesInFolder(udlFiles, TEXT("*.xml"), userDefineLangsFolderPath);
+	getFilesInFolder(udlFiles, TEXT("*.xml"), _userDefineLangsFolderPath);
 
 	_pXmlUserLangDoc = new TiXmlDocument(_userDefineLangPath);
 	loadOkay = _pXmlUserLangDoc->LoadFile();

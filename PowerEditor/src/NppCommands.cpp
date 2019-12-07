@@ -37,7 +37,7 @@
 #include "functionListPanel.h"
 #include "fileBrowser.h"
 #include "Sorters.h"
-#include "verifySignedFile.h"
+#include "verifySignedfile.h"
 #include "md5.h"
 #include "sha-256.h"
 
@@ -377,7 +377,7 @@ void Notepad_plus::command(int id)
 								_pEditView->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
 								_pEditView->execute(SCI_ADDTEXT, *lpLen, reinterpret_cast<LPARAM>(lpchar));
 
-								GlobalUnlock(hglb);
+								GlobalUnlock(hglbLen);
 							}
 						}
 					}
@@ -462,7 +462,7 @@ void Notepad_plus::command(int id)
 			if (nppGui._searchEngineChoice == nppGui.se_custom)
 			{
 				url = nppGui._searchEngineCustom;
-				remove_if(url.begin(), url.end(), isspace);
+				remove_if(url.begin(), url.end(), _istspace);
 
 				auto httpPos = url.find(TEXT("http://"));
 				auto httpsPos = url.find(TEXT("https://"));
@@ -3049,6 +3049,13 @@ void Notepad_plus::command(int id)
 			}
 		}
         break;
+		
+		case IDM_LANG_OPENUDLDIR:
+		{
+			generic_string userDefineLangFolderPath = NppParameters::getInstance().getUserDefineLangFolderPath();
+			::ShellExecute(_pPublicInterface->getHSelf(), TEXT("open"), userDefineLangFolderPath.c_str(), NULL, NULL, SW_SHOW);
+			break;
+		}
 
         case IDC_PREV_DOC :
         case IDC_NEXT_DOC :
@@ -3498,6 +3505,9 @@ void Notepad_plus::command(int id)
 			case IDM_SEARCH_MARKALLEXT5      :
 			case IDM_SEARCH_UNMARKALLEXT5    :
 			case IDM_SEARCH_CLEARALLMARKS    :
+			case IDM_FORMAT_TODOS  :
+			case IDM_FORMAT_TOUNIX :
+			case IDM_FORMAT_TOMAC  :
 				_macro.push_back(recordedMacroStep(id));
 				break;
 		}
