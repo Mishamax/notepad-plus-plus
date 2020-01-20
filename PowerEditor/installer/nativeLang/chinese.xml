@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <NotepadPlus>
-    <Native-Langue name="繁體中文/正體中文" filename="chinese.xml" version="7.8.1">
+    <Native-Langue name="繁體中文/正體中文" filename="chinese.xml" version="7.8.3">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -779,6 +779,7 @@
                 </DefaultDir>
 
                 <FileAssoc title="副檔名連結設定">
+                    <Item id="4008" name="請關閉 Notepad++，並在系統管理員模式下重新啟動 Notepad++ 以使用此功能。"/>
                     <Item id="4009" name="支援的副檔名"/>
                     <Item id="4010" name="已連結的副檔名"/>
                 </FileAssoc>
@@ -863,6 +864,7 @@
                 </Backup>
 
                 <AutoCompletion title="字詞自動完成功能">
+                    <Item id="6115" name="自動縮排"/>
                     <Item id="6807" name="自動完成功能"/>
                     <Item id="6808" name="啟動自動完成功能"/>
                     <Item id="6809" name="函式"/>
@@ -938,11 +940,11 @@
                     <Item id="6314" name="在尋找與取代對話方塊中使用等寬字型（需要重新啟動 Notepad++）"/>
                     <Item id="6337" name="資料夾工作區檔案副檔名："/>
                     <Item id="6114" name="啟動"/>
-                    <Item id="6115" name="自動縮排"/>
                     <Item id="6117" name="開啟「最近使用的檔案」功能"/>
                     <Item id="6344" name="窺視檔案"/>
                     <Item id="6345" name="於頁籤窺視檔案"/>
                     <Item id="6346" name="於文件導覽窺視檔案"/>
+                    <Item id="6348" name="不用選取詞填充搜尋對話框中的尋找內容"/>
                 </MISC>
             </Preference>
 
@@ -1035,6 +1037,7 @@
             <PrehistoricSystemDetected title="系統過舊" message="很抱歉，此功能不適用於過舊的系統。"/>
             <XpUpdaterProblem title="Notepad++ 更新程式" message="由於 XP 的安全機制過舊，更新程式與 XP 並不兼容。
 您要直接到 Notepad++ 網站下載最新版本嗎？"/>
+            <GUpProxyConfNeedAdminMode title="代理伺服器設定" message="請關閉 Notepad++，並在系統管理員模式下重新啟動 Notepad++ 以設定代理伺服器。"/>
             <DocTooDirtyToMonitor title="監控錯誤" message="文件已被修改，請在監視前儲存文件。"/>
             <DocNoExistToMonitor title="監控錯誤" message="文件不存在，因此無法進行監視。"/>
             <FileTooBigToOpen title="文件太大" message="文件太大，無法使用 Notepad++ 開啟。"/>

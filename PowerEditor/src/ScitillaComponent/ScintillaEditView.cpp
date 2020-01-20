@@ -138,7 +138,7 @@ LanguageName ScintillaEditView::langNames[L_EXTERNAL+1] = {
 {TEXT("r"),				TEXT("R"),					TEXT("R programming language"),							L_R,			SCLEX_R},
 {TEXT("jsp"),			TEXT("JSP"),				TEXT("JavaServer Pages script file"),					L_JSP,			SCLEX_HTML},
 {TEXT("coffeescript"),	TEXT("CoffeeScript"),		TEXT("CoffeeScript file"),								L_COFFEESCRIPT,	SCLEX_COFFEESCRIPT},
-{TEXT("json"),			TEXT("json"),				TEXT("JSON file"),										L_JSON,			SCLEX_CPP },
+{TEXT("json"),			TEXT("json"),				TEXT("JSON file"),										L_JSON,			SCLEX_JSON },
 {TEXT("javascript.js"), TEXT("JavaScript"),			TEXT("JavaScript file"),								L_JAVASCRIPT,	SCLEX_CPP },
 {TEXT("fortran77"),		TEXT("Fortran fixed form"),	TEXT("Fortran fixed form source file"),					L_FORTRAN_77,	SCLEX_F77},
 {TEXT("baanc"),			TEXT("BaanC"),				TEXT("BaanC File"),										L_BAANC,		SCLEX_BAAN },
@@ -693,20 +693,28 @@ void ScintillaEditView::setEmbeddedJSLexer()
 
 void ScintillaEditView::setJsonLexer()
 {
-	execute(SCI_SETLEXER, SCLEX_CPP);
+	execute(SCI_SETLEXER, SCLEX_JSON);
 
 	const TCHAR *pKwArray[10] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
 	makeStyle(L_JSON, pKwArray);
 
-	basic_string<char> keywordList("");
+	string keywordList;
+	string keywordList2;
 	if (pKwArray[LANG_INDEX_INSTR])
 	{
-		basic_string<wchar_t> kwlW = pKwArray[LANG_INDEX_INSTR];
+		wstring kwlW = pKwArray[LANG_INDEX_INSTR];
 		keywordList = wstring2string(kwlW, CP_ACP);
 	}
 
+	if (pKwArray[LANG_INDEX_INSTR2])
+	{
+		wstring kwlW = pKwArray[LANG_INDEX_INSTR2];
+		keywordList2 = wstring2string(kwlW, CP_ACP);
+	}
+
 	execute(SCI_SETKEYWORDS, 0, reinterpret_cast<LPARAM>(getCompleteKeywordList(keywordList, L_JSON, LANG_INDEX_INSTR)));
+	execute(SCI_SETKEYWORDS, 1, reinterpret_cast<LPARAM>(getCompleteKeywordList(keywordList2, L_JSON, LANG_INDEX_INSTR2)));
 
 	execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("fold"), reinterpret_cast<LPARAM>("1"));
 	execute(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("fold.compact"), reinterpret_cast<LPARAM>("0"));
@@ -1788,7 +1796,8 @@ void ScintillaEditView::saveCurrentPos()
 	//Save data so, that the current topline becomes visible again after restoring.
 	int32_t displayedLine = static_cast<int32_t>(execute(SCI_GETFIRSTVISIBLELINE));
 	int32_t docLine = static_cast<int32_t>(execute(SCI_DOCLINEFROMVISIBLE, displayedLine));		//linenumber of the line displayed in the top
-	//int offset = displayedLine - execute(SCI_VISIBLEFROMDOCLINE, docLine);		//use this to calc offset of wrap. If no wrap this should be zero
+	int32_t offset = displayedLine - static_cast<int32_t>(execute(SCI_VISIBLEFROMDOCLINE, docLine));		//use this to calc offset of wrap. If no wrap this should be zero
+	int wrapCount = static_cast<int32_t>(execute(SCI_WRAPCOUNT, docLine));
 
 	Buffer * buf = MainFileManager.getBufferByID(_currentBufferID);
 
@@ -1800,16 +1809,20 @@ void ScintillaEditView::saveCurrentPos()
 	pos._xOffset = static_cast<int>(execute(SCI_GETXOFFSET));
 	pos._selMode = static_cast<int32_t>(execute(SCI_GETSELECTIONMODE));
 	pos._scrollWidth = static_cast<int32_t>(execute(SCI_GETSCROLLWIDTH));
+	pos._offset = offset;
+	pos._wrapCount = wrapCount;
 
 	buf->setPosition(pos, this);
 }
 
-void ScintillaEditView::restoreCurrentPos()
+// restore current position is executed in two steps.
+// The detection wrap state done in the pre step function:
+// if wrap is enabled, then _positionRestoreNeeded is activated
+// so post step function will be cakked in the next SCN_PAINTED message
+void ScintillaEditView::restoreCurrentPosPreStep()
 {
 	Buffer * buf = MainFileManager.getBufferByID(_currentBufferID);
 	Position & pos = buf->getPosition(this);
-
-	execute(SCI_GOTOPOS, 0);	//make sure first line visible by setting caret there, will scroll to top of document
 
 	execute(SCI_SETSELECTIONMODE, pos._selMode);	//enable
 	execute(SCI_SETANCHOR, pos._startPos);
@@ -1821,9 +1834,69 @@ void ScintillaEditView::restoreCurrentPos()
 		execute(SCI_SETXOFFSET, pos._xOffset);
 	}
 	execute(SCI_CHOOSECARETX); // choose current x position
-
 	int lineToShow = static_cast<int32_t>(execute(SCI_VISIBLEFROMDOCLINE, pos._firstVisibleLine));
-	scroll(0, lineToShow);
+	execute(SCI_SETFIRSTVISIBLELINE, lineToShow);
+	if (isWrap())
+	{
+		// Enable flag 'positionRestoreNeeded' so that function restoreCurrentPosPostStep get called
+		// once scintilla send SCN_PAITED notification
+		_positionRestoreNeeded = true;
+	}
+	_restorePositionRetryCount = 0;
+
+}
+
+// If wrap is enabled, the post step function will be called in the next SCN_PAINTED message
+// to scroll several lines to set the first visible line to the correct wrapped line.
+void ScintillaEditView::restoreCurrentPosPostStep()
+{
+	if (!_positionRestoreNeeded)
+		return;
+
+	static int32_t restoreDone = 0;
+	Buffer * buf = MainFileManager.getBufferByID(_currentBufferID);
+	Position & pos = buf->getPosition(this);
+
+	++_restorePositionRetryCount;
+
+	// Scintilla can send several SCN_PAINTED notifications before the buffer is ready to be displayed. 
+	// this post step function is therefore iterated several times in a maximum of 8 iterations. 
+	// 8 is an arbitrary number. 2 is a minimum. Maximum value is unknown.
+	if (_restorePositionRetryCount > 8)
+	{
+		// Abort the position restoring  process. Buffer topology may have changed
+		_positionRestoreNeeded = false;
+		return;
+	}
+	
+	int32_t displayedLine = static_cast<int32_t>(execute(SCI_GETFIRSTVISIBLELINE));
+	int32_t docLine = static_cast<int32_t>(execute(SCI_DOCLINEFROMVISIBLE, displayedLine));		//linenumber of the line displayed in the 
+	
+
+	// check docLine must equals saved position
+	if (docLine != pos._firstVisibleLine)
+	{
+		
+		// Scintilla has paint the buffer but the position is not correct.
+		int lineToShow = static_cast<int32_t>(execute(SCI_VISIBLEFROMDOCLINE, pos._firstVisibleLine));
+		execute(SCI_SETFIRSTVISIBLELINE, lineToShow);
+	}
+	else if (pos._offset > 0)
+	{
+		// don't scroll anything if the wrap count is different than the saved one.
+		// Buffer update may be in progress (in case wrap is enabled)
+		int wrapCount = static_cast<int32_t>(execute(SCI_WRAPCOUNT, docLine));
+		if (wrapCount == pos._wrapCount)
+		{
+			scroll(0, pos._offset);
+			_positionRestoreNeeded = false;
+		}
+	}
+	else
+	{
+		// Buffer position is correct, and there is no scroll to apply
+		_positionRestoreNeeded = false;
+	}
 }
 
 void ScintillaEditView::restyleBuffer() {
@@ -1878,7 +1951,7 @@ void ScintillaEditView::activateBuffer(BufferID buffer)
 	const std::vector<size_t> & lineStateVectorNew = newBuf->getHeaderLineState(this);
 	syncFoldStateWith(lineStateVectorNew);
 
-	restoreCurrentPos();
+	restoreCurrentPosPreStep();
 
 	bufferUpdated(_currentBuffer, (BufferChangeMask & ~BufferChangeLanguage));	//everything should be updated, but the language (which undoes some operations done here like folding)
 

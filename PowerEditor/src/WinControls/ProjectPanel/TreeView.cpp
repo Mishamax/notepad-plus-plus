@@ -263,6 +263,45 @@ void TreeView::cleanSubEntries(HTREEITEM hTreeItem)
 	}
 }
 
+void TreeView::foldExpandRecursively(HTREEITEM hParentItem, bool isFold) const
+{
+	if (!hParentItem)
+		return;
+
+	HTREEITEM hItem = getChildFrom(hParentItem);
+
+	for (; hItem != NULL; hItem = getNextSibling(hItem))
+	{
+		foldExpandRecursively(hItem, isFold);
+		if (isFold)
+		{
+			fold(hItem);
+		}
+		else
+		{
+			expand(hItem);
+		}
+	}
+}
+
+void TreeView::foldExpandAll(bool isFold) const
+{
+	for (HTREEITEM tvProj = getRoot();
+		tvProj != NULL;
+		tvProj = getNextSibling(tvProj))
+	{
+		foldExpandRecursively(tvProj, isFold);
+		if (isFold)
+		{
+			fold(tvProj);
+		}
+		else
+		{
+			expand(tvProj);
+		}
+	}
+}
+
 void TreeView::setItemImage(HTREEITEM hTreeItem, int iImage, int iSelectedImage)
 {
 	TVITEM tvItem;

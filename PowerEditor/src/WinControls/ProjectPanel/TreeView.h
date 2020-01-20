@@ -88,6 +88,17 @@ public:
 		TreeView_Expand(_hSelf, hItem, TVE_COLLAPSE);
 	};
 
+	void foldExpandRecursively(HTREEITEM hItem, bool isFold) const;
+	void foldExpandAll(bool isFold) const;
+	
+	void foldAll() const {
+		foldExpandAll(true);
+	};
+
+	void expandAll() const {
+		foldExpandAll(false);
+	};
+
 	void toggleExpandCollapse(HTREEITEM hItem) const {
 		TreeView_Expand(_hSelf, hItem, TVE_TOGGLE);
 	};

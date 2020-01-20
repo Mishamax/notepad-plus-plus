@@ -136,6 +136,8 @@ struct Position
 	int _xOffset = 0;
 	int _selMode = 0;
 	int _scrollWidth = 1;
+	int _offset = 0;
+	int _wrapCount = 0;
 };
 
 
@@ -824,6 +826,7 @@ struct NppGUI final
 	char _rightmostDelimiter = ')';
 	bool _delimiterSelectionOnEntireDocument = false;
 	bool _backSlashIsEscapeCharacterForSql = true;
+	bool _stopFillingFindField = false;
 	bool _monospacedFontFindDlg = false;
 	bool _isWordCharDefault = true;
 	std::string _customWordChars;
@@ -856,6 +859,8 @@ struct NppGUI final
 
 	generic_string _definedSessionExt;
 	generic_string _definedWorkspaceExt;
+
+	generic_string _commandLineInterpreter = TEXT("cmd");
 
 	struct AutoUpdateOptions
 	{
@@ -1732,6 +1737,9 @@ private:
 
 public:
 	void setShortcutDirty() { _isAnyShortcutModified = true; };
+	void setAdminMode(bool isAdmin) { _isAdminMode = isAdmin; }
+	bool isAdmin() const { return _isAdminMode; }
+
 private:
 	bool _isAnyShortcutModified = false;
 	std::vector<CommandShortcut> _shortcuts;			//main menu shortuts. Static size
@@ -1791,6 +1799,7 @@ private:
 	generic_string _wingupParams;
 	generic_string _wingupDir;
 	bool _isElevationRequired = false;
+	bool _isAdminMode = false;
 
 public:
 	generic_string getWingupFullPath() const { return _wingupFullPath; };

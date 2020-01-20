@@ -462,13 +462,13 @@ bool Notepad_plus::doReload(BufferID id, bool alert)
 	if (mainVisisble)
 	{
 		_mainEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-		_mainEditView.restoreCurrentPos();
+		_mainEditView.restoreCurrentPosPreStep();
 	}
 
 	if (subVisisble)
 	{
 		_subEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-		_subEditView.restoreCurrentPos();
+		_subEditView.restoreCurrentPosPreStep();
 	}
 
 	// Once reload is complete, activate buffer which will take care of
@@ -959,7 +959,8 @@ bool Notepad_plus::fileCloseAll(bool doDeleteBackup, bool isSnapshotMode)
 				}
 				else
 				{
-					res = doSaveOrNot(buf->getFullPathName(), true);
+					size_t nbDirtyFiles = MainFileManager.getNbDirtyBuffers();
+					res = doSaveOrNot(buf->getFullPathName(), nbDirtyFiles > 1);
 				}
 
 				if (res == IDYES)
@@ -1040,7 +1041,8 @@ bool Notepad_plus::fileCloseAll(bool doDeleteBackup, bool isSnapshotMode)
 				}
 				else
 				{
-					res = doSaveOrNot(buf->getFullPathName(), true);
+					size_t nbDirtyFiles = MainFileManager.getNbDirtyBuffers();
+					res = doSaveOrNot(buf->getFullPathName(), nbDirtyFiles > 1);
 				}
 
 				if (res == IDYES)
@@ -1096,6 +1098,17 @@ bool Notepad_plus::fileCloseAllGiven(const std::vector<int>& krvecBufferIndexes)
 	bool saveToAll = false;
 	std::vector<int> bufferIndexesToClose;
 
+	// Count the number of dirty file
+	size_t nbDirtyFiles = 0;
+	for (const auto& index : krvecBufferIndexes)
+	{
+		BufferID id = _pDocTab->getBufferByIndex(index);
+		Buffer* buf = MainFileManager.getBufferByID(id);
+
+		if (buf->isDirty())
+			++nbDirtyFiles;
+	}
+
 	for (const auto& index : krvecBufferIndexes)
 	{
 		BufferID id = _pDocTab->getBufferByIndex(index);
@@ -1126,8 +1139,9 @@ bool Notepad_plus::fileCloseAllGiven(const std::vector<int>& krvecBufferIndexes)
 			*	IDNO		: No
 			*	IDIGNORE	: No To All
 			*	IDCANCEL	: Cancel Opration
-			*/
-			int res = saveToAll ? IDYES : doSaveOrNot(buf->getFullPathName(), true);
+			*/			
+
+			int res = saveToAll ? IDYES : doSaveOrNot(buf->getFullPathName(), nbDirtyFiles > 1);
 
 			if (res == IDYES || res == IDRETRY)
 			{
@@ -1190,11 +1204,13 @@ bool Notepad_plus::fileCloseAllToRight()
 
 bool Notepad_plus::fileCloseAllUnchanged()
 {
+	// Indexes must go from high to low to deal with the fact that when one index is closed, any remaining
+	// indexes (smaller than the one just closed) will point to the wrong tab.
 	std::vector<int> vecIndexesToClose;
 
 	for (int i = int(_pDocTab->nbItem()) - 1; i >= 0; i--)
 	{
-		BufferID id = _mainDocTab.getBufferByIndex(i);
+		BufferID id = _pDocTab->getBufferByIndex(i);
 		Buffer* buf = MainFileManager.getBufferByID(id);
 		if ((buf->isUntitled() && buf->docLength() == 0) || !buf->isDirty())
 		{
@@ -1243,7 +1259,13 @@ bool Notepad_plus::fileCloseAllButCurrent()
 			}
 			else
 			{
-				res = doSaveOrNot(buf->getFullPathName(), true);
+				size_t nbDirtyFiles = MainFileManager.getNbDirtyBuffers();
+
+				// if current file is dirty, if should be removed from dirty files to make nbDirtyFiles accurate
+				Buffer* currentBuf = MainFileManager.getBufferByID(current);
+				nbDirtyFiles -= currentBuf->isDirty() ? 1 : 0;
+
+				res = doSaveOrNot(buf->getFullPathName(), nbDirtyFiles > 1);
 			}
 
 			if (res == IDYES)
@@ -1307,7 +1329,13 @@ bool Notepad_plus::fileCloseAllButCurrent()
 			}
 			else
 			{
-				res = doSaveOrNot(buf->getFullPathName(), true);
+				size_t nbDirtyFiles = MainFileManager.getNbDirtyBuffers();
+
+				// if current file is dirty, if should be removed from dirty files to make nbDirtyFiles accurate
+				Buffer* currentBuf = MainFileManager.getBufferByID(current);
+				nbDirtyFiles -= currentBuf->isDirty() ? 1 : 0;
+
+				res = doSaveOrNot(buf->getFullPathName(), nbDirtyFiles > 1);
 			}
 
 
@@ -2029,8 +2057,8 @@ bool Notepad_plus::loadSession(Session & session, bool isSnapshotMode)
 		_isFolding = false;
 	}
 
-	_mainEditView.restoreCurrentPos();
-	_subEditView.restoreCurrentPos();
+	_mainEditView.restoreCurrentPosPreStep();
+	_subEditView.restoreCurrentPosPreStep();
 
 	if (session._activeMainIndex < _mainDocTab.nbItem())//session.nbMainFiles())
 		activateBuffer(_mainDocTab.getBufferByIndex(session._activeMainIndex), MAIN_VIEW);

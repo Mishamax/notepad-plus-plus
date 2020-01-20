@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <NotepadPlus>
-    <Native-Langue name="English" filename="english.xml" version="7.8.1">
+    <Native-Langue name="English" filename="english.xml" version="7.8.3">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -274,6 +274,12 @@
                     <Item id="45011" name="Convert to UTF-8-BOM"/>
                     <Item id="45012" name="Convert to UCS-2 BE BOM"/>
                     <Item id="45013" name="Convert to UCS-2 LE BOM"/>
+                    <Item id="45060" name="Big5 (Traditional)"/>
+                    <Item id="45061" name="GB2312 (Simplified)"/>
+                    <Item id="45054" name="OEM 861: Icelandic"/>
+                    <Item id="45057" name="OEM 865: Nordic"/>
+                    <Item id="45053" name="OEM 860: Portuguese"/>
+                    <Item id="45056" name="OEM 863: French"/>
 
                     <Item id="10001" name="Move to Other View"/>
                     <Item id="10002" name="Clone to Other View"/>
@@ -778,6 +784,7 @@
                 </DefaultDir>
 
                 <FileAssoc title="File Association">
+                    <Item id="4008" name="Please exit Notepad++ and relaunch Notepad++ in Administrator mode to use this feature."/>
                     <Item id="4009" name="Supported extensions:"/>
                     <Item id="4010" name="Registered extensions:"/>
                 </FileAssoc>
@@ -863,6 +870,7 @@
                 </Backup>
 
                 <AutoCompletion title="Auto-Completion">
+                    <Item id="6115" name="Auto-indent"/>
                     <Item id="6807" name="Auto-Completion"/>
                     <Item id="6808" name="Enable auto-completion on each input"/>
                     <Item id="6809" name="Function completion"/>
@@ -939,11 +947,11 @@
                     <Item id="6314" name="Use monospaced font in Find dialog (Need to restart Notepad++)"/>
                     <Item id="6337" name="Workspace file ext.:"/>
                     <Item id="6114" name="Enable"/>
-                    <Item id="6115" name="Auto-indent"/>
                     <Item id="6117" name="Enable MRU behaviour"/>
                     <Item id="6344" name="Document Peeker"/>
                     <Item id="6345" name="Peek on tab"/>
                     <Item id="6346" name="Peek on document map"/>
+                    <Item id="6348" name="Don't fill find field in Find dialog with selected word"/>
                 </MISC>
             </Preference>
             <MultiMacro title="Run a Macro Multiple Times">
@@ -1048,6 +1056,7 @@ Do you want to reload it and lose the changes made in Notepad++?"/>
             <PrehistoricSystemDetected title="Prehistoric system detected" message="It seems you still use a prehistoric system. This feature works only on a modern system, sorry."/>
             <XpUpdaterProblem title="Notepad++ Updater" message="Notepad++ updater is not compatible with XP due to the obsolete security layer under XP.
 Do you want to go to Notepad++ page to download the latest version?"/>
+            <GUpProxyConfNeedAdminMode title="Proxy Settings" message="Please relaunch Notepad++ in Admin mode to configure proxy."/>
             <DocTooDirtyToMonitor title="Monitoring problem" message="The document is dirty. Please save the modification before monitoring it."/>
             <DocNoExistToMonitor title="Monitoring problem" message="The file should exist to be monitored."/>
             <FileTooBigToOpen title="File size problem" message="File is too big to be opened by Notepad++"/>
@@ -1118,8 +1127,8 @@ Continue?"/>
         </DocumentMap>
         <FunctionList>
             <PanelTitle name="Function List"/>
-            <SortTip name="Sort" />
-            <ReloadTip name="Reload" />
+            <SortTip name="Sort"/>
+            <ReloadTip name="Reload"/>
         </FunctionList>
         <FolderAsWorkspace>
             <PanelTitle name="Folder as Workspace"/>

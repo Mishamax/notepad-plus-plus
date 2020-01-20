@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <NotepadPlus>
-    <Native-Langue name="Français" filename="french.xml" version="7.8.1">
+    <Native-Langue name="Français" filename="french.xml" version="7.8.3">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -281,6 +281,12 @@
                     <Item id="45011" name="Convertir en UTF-8-BOM"/>
                     <Item id="45012" name="Convertir en UCS-2 BE BOM"/>
                     <Item id="45013" name="Convertir en UCS-2 LE BOM"/>
+                    <Item id="45060" name="Big5 (traditionnel)"/>
+                    <Item id="45061" name="GB2312 (simplifié)"/>
+                    <Item id="45054" name="OEM 861: islandais"/>
+                    <Item id="45057" name="OEM 865: danois &amp;&amp; norvégien"/>
+                    <Item id="45053" name="OEM 860: portugais"/>
+                    <Item id="45056" name="OEM 863: français"/>
                     <Item id="46001" name="Configurateur de coloration syntaxique..."/>
                     <Item id="46250" name="Définir votre langage..."/>
                     <Item id="46300" name="Ovrir le dossier des Langages utilisateur..."/>
@@ -317,7 +323,7 @@
                     <Item id="50002" name="Infobulle des paramètres de fonctions"/>
                     <Item id="50003" name="Document précédent"/>
                     <Item id="50004" name="Document suivant"/>
-                    <Item id="50005" name="Commencer/Arrêter enregistrement d'une macro"/>
+                    <Item id="50005" name="Démarrer/Arrêter l'enregistrement d'une macro"/>
                     <Item id="50006" name="Complétion de chemin d'accès du fichier"/>
                 </Commands>
             </Main>
@@ -764,6 +770,7 @@
                 </DefaultDir>
 
                 <FileAssoc title="Extensions de fichier">
+                  <Item id="4008" name="Veuillez quitter Notepad++ et relancer Notepad++ en mode Administrateur pour utiliser cette fonctionnalité."/>
                   <Item id="4009" name="Extensions :"/>
                   <Item id="4010" name="Extensions associées :"/>
                 </FileAssoc>
@@ -846,6 +853,7 @@
                     <Item id="6804" name="Dossier spécifique"/>
                 </Backup>
                 <AutoCompletion title="Autocomplétion">
+                    <Item id="6115" name="Indentation automatique"/>
                     <Item id="6807" name="Autocomplétion"/>
                     <Item id="6808" name="Activer la complétion automatique"/>
                     <Item id="6809" name="Complétion de fonction"/>
@@ -908,7 +916,6 @@
                         <Element name="Désactiver"/>
                     </ComboBox>
                     <Item id="6114" name="Activer"/>
-                    <Item id="6115" name="Indentation automatique"/>
                     <Item id="6117" name="Activer la liste de MRU"/>
                     <Item id="6308" name="Réduire dans la barre de notifications"/>
                     <Item id="6312" name="Surveillance de l’état des fichiers"/>
@@ -927,6 +934,7 @@
                     <Item id="6344" name="Aperçu du document"/>
                     <Item id="6345" name="Aperçu à onglet"/>
                     <Item id="6346" name="Aperçu à commutateur de documents"/>
+                    <Item id="6348" name="Ne pas remplir le champs de Recherche avec le mot séléctionné"/>
                 </MISC>
             </Preference>
             <MultiMacro title="Exécuter une macro en boucle">
@@ -1022,6 +1030,7 @@ Voulez-vous le recharger et perdre les modifications effectuées dans Notepad++ 
             <PrehistoricSystemDetected title="Système préhistorique détecté" message="Il semble que vous utilisez toujours un système préhistorique, cette fonctionnalité ne fonctionne que sur un système moderne, désolé."/>
             <XpUpdaterProblem title="Mettre à jour Notepad++" message="Le metteur à jour de Notepad++ est incompatible avec XP en raison de la couche de sécurité obsolète de XP.
 Voulez-vous télécharger la dernière version de Notepad++ sur le site officiel ?"/>
+            <GUpProxyConfNeedAdminMode title="Paramétrage de Proxy" message=" Afin de pouvoir configurer le proxy, relancez Notepad++ en mode d'administrateur."/>
             <DocTooDirtyToMonitor title="Surveillance de Log" message="Le document a été modifié. Veuillez l'enregistrer d'abord."/>
             <DocNoExistToMonitor title="Surveillance de Log" message="Le fichier doit exister pour être surveillé."/>
             <FileTooBigToOpen title="Fichier trop volumineux" message="Ce fichier est trop volumineux pour être ouvert avec Notepad++."/>
@@ -1093,8 +1102,8 @@ Voulez-vous les poursuivez ?"/>
         </DocumentMap>
         <FunctionList>
             <PanelTitle name="Liste des Fonctions"/>
-            <SortTip name="Trier" />
-            <ReloadTip name="Recharger" />
+            <SortTip name="Trier"/>
+            <ReloadTip name="Recharger"/>
         </FunctionList>
         <FolderAsWorkspace>
             <PanelTitle name="Dossier en tant qu'Espace de travail"/>

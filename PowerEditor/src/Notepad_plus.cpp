@@ -134,20 +134,20 @@ Notepad_plus::Notepad_plus()
 {
 	ZeroMemory(&_prevSelectedRange, sizeof(_prevSelectedRange));
 
-
-	TiXmlDocumentA *nativeLangDocRootA = (NppParameters::getInstance()).getNativeLangA();
+	NppParameters& nppParam = NppParameters::getInstance();
+	TiXmlDocumentA *nativeLangDocRootA = nppParam.getNativeLangA();
     _nativeLangSpeaker.init(nativeLangDocRootA);
 
-	LocalizationSwitcher & localizationSwitcher = (NppParameters::getInstance()).getLocalizationSwitcher();
+	LocalizationSwitcher & localizationSwitcher = nppParam.getLocalizationSwitcher();
     const char *fn = _nativeLangSpeaker.getFileName();
     if (fn)
     {
         localizationSwitcher.setFileName(fn);
     }
 
-	(NppParameters::getInstance()).setNativeLangSpeaker(&_nativeLangSpeaker);
+	nppParam.setNativeLangSpeaker(&_nativeLangSpeaker);
 
-	TiXmlDocument *toolIconsDocRoot = (NppParameters::getInstance()).getToolIcons();
+	TiXmlDocument *toolIconsDocRoot = nppParam.getToolIcons();
 
 	if (toolIconsDocRoot)
 	{
@@ -172,6 +172,7 @@ Notepad_plus::Notepad_plus()
 	else
 		is_admin = false;
 
+	nppParam.setAdminMode(is_admin == TRUE);
 	_isAdministrator = is_admin ? true : false;
 }
 
@@ -1884,6 +1885,21 @@ int Notepad_plus::doSaveOrNot(const TCHAR* fn, bool isMulti)
 		::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
 	}
 
+	if (!isMulti)
+	{
+		generic_string title, msg;
+
+		if (!_nativeLangSpeaker.getDoSaveOrNotStrings(title, msg))
+		{
+			title = TEXT("Save");
+			msg = TEXT("Save file \"$STR_REPLACE$\" ?");
+		}
+
+		msg = stringReplace(msg, TEXT("$STR_REPLACE$"), fn);
+
+		return ::MessageBox(_pPublicInterface->getHSelf(), msg.c_str(), title.c_str(), MB_YESNOCANCEL | MB_ICONQUESTION | MB_APPLMODAL);
+	}
+
 	DoSaveOrNotBox doSaveOrNotBox;
 	doSaveOrNotBox.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), fn, isMulti);
 	doSaveOrNotBox.doDialog(_nativeLangSpeaker.isRTL());
@@ -2805,7 +2821,7 @@ void Notepad_plus::setLanguage(LangType langType)
 	if (reset)
 	{
 		_subEditView.execute(SCI_SETDOCPOINTER, 0, prev);
-		_subEditView.restoreCurrentPos();
+		_subEditView.restoreCurrentPosPreStep();
 	}
 };
 
@@ -3725,7 +3741,7 @@ void Notepad_plus::docGotoAnotherEditView(FileTransferMode mode)
 		Buffer *buf = MainFileManager.getBufferByID(current);
 		_pEditView->saveCurrentPos();	//allow copying of position
 		buf->setPosition(buf->getPosition(_pEditView), _pNonEditView);
-		_pNonEditView->restoreCurrentPos();	//set position
+		_pNonEditView->restoreCurrentPosPreStep();	//set position
 		activateBuffer(current, viewToGo);
 	}
 

@@ -89,7 +89,7 @@ void Notepad_plus::command(int id)
 
 		case IDM_FILE_OPEN_CMD:
 		{
-			Command cmd(TEXT("cmd"));
+			Command cmd(NppParameters::getInstance().getNppGUI()._commandLineInterpreter.c_str());
 			cmd.run(_pPublicInterface->getHSelf(), TEXT("$(CURRENT_DIRECTORY)"));
 		}
 		break;
@@ -986,8 +986,13 @@ void Notepad_plus::command(int id)
 				dlgID = MARK_DLG;
 			_findReplaceDlg.doDialog(dlgID, _nativeLangSpeaker.isRTL());
 
-			_pEditView->getGenericSelectedText(str, strSize);
-			_findReplaceDlg.setSearchText(str);
+			const NppGUI & nppGui = (NppParameters::getInstance()).getNppGUI();
+			if (!nppGui._stopFillingFindField)
+			{
+				_pEditView->getGenericSelectedText(str, strSize);
+				_findReplaceDlg.setSearchText(str);
+			}
+
 			setFindReplaceFolderFilter(NULL, NULL);
 
 			if (isFirstTime)
@@ -2499,7 +2504,7 @@ void Notepad_plus::command(int id)
 
 				// Paste the texte, restore buffer status
 				_pEditView->execute(SCI_PASTE);
-				_pEditView->restoreCurrentPos();
+				_pEditView->restoreCurrentPosPreStep();
 
 				// Restore the previous clipboard data
 				::OpenClipboard(_pPublicInterface->getHSelf());
@@ -2908,6 +2913,15 @@ void Notepad_plus::command(int id)
 					generic_string param;
 					if (id == IDM_CONFUPDATERPROXY)
 					{
+						if (!_isAdministrator)
+						{
+							_nativeLangSpeaker.messageBox("GUpProxyConfNeedAdminMode",
+								_pPublicInterface->getHSelf(),
+								TEXT("Please relaunch Notepad++ in Admin mode to configure proxy."),
+								TEXT("Proxy Settings"),
+								MB_OK | MB_APPLMODAL);
+							return;
+						}
 						param = TEXT("-options");
 					}
 					else
