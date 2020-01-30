@@ -397,7 +397,8 @@ LRESULT ScintillaEditView::scintillaNew_Proc(HWND hwnd, UINT Message, WPARAM wPa
 				return TRUE;
 			}
 
-			if (LOWORD(wParam) & MK_SHIFT) {
+			if (LOWORD(wParam) & MK_SHIFT)
+			{
 				// move 3 columns at a time
 				::CallWindowProc(_scintillaDefaultProc, hwnd, WM_HSCROLL, ((short)HIWORD(wParam) < 0) ? SB_LINERIGHT : SB_LINELEFT, NULL);
 				::CallWindowProc(_scintillaDefaultProc, hwnd, WM_HSCROLL, ((short)HIWORD(wParam) < 0) ? SB_LINERIGHT : SB_LINELEFT, NULL);
@@ -1899,13 +1900,15 @@ void ScintillaEditView::restoreCurrentPosPostStep()
 	}
 }
 
-void ScintillaEditView::restyleBuffer() {
+void ScintillaEditView::restyleBuffer()
+{
 	execute(SCI_CLEARDOCUMENTSTYLE);
 	execute(SCI_COLOURISE, 0, -1);
 	_currentBuffer->setNeedsLexing(false);
 }
 
-void ScintillaEditView::styleChange() {
+void ScintillaEditView::styleChange()
+{
 	defineDocType(_currentBuffer->getLangType());
 	restyleBuffer();
 }
@@ -2645,23 +2648,31 @@ void ScintillaEditView::setLineIndent(int line, int indent) const
 	execute(SCI_SETLINEINDENTATION, line, indent);
 	int32_t posAfter = static_cast<int32_t>(execute(SCI_GETLINEINDENTPOSITION, line));
 	int posDifference = posAfter - posBefore;
-	if (posAfter > posBefore) {
+	if (posAfter > posBefore)
+	{
 		// Move selection on
-		if (crange.cpMin >= posBefore) {
+		if (crange.cpMin >= posBefore)
+		{
 			crange.cpMin += posDifference;
 		}
-		if (crange.cpMax >= posBefore) {
+		if (crange.cpMax >= posBefore)
+		{
 			crange.cpMax += posDifference;
 		}
-	} else if (posAfter < posBefore) {
+	}
+	else if (posAfter < posBefore)
+	{
 		// Move selection back
-		if (crange.cpMin >= posAfter) {
+		if (crange.cpMin >= posAfter)
+		{
 			if (crange.cpMin >= posBefore)
 				crange.cpMin += posDifference;
 			else
 				crange.cpMin = posAfter;
 		}
-		if (crange.cpMax >= posAfter) {
+
+		if (crange.cpMax >= posAfter)
+		{
 			if (crange.cpMax >= posBefore)
 				crange.cpMax += posDifference;
 			else
@@ -2978,7 +2989,8 @@ pair<int, int> ScintillaEditView::getWordRange()
 bool ScintillaEditView::expandWordSelection()
 {
     pair<int, int> wordRange = 	getWordRange();
-    if (wordRange.first != wordRange.second) {
+    if (wordRange.first != wordRange.second)
+	{
         execute(SCI_SETSELECTIONSTART, wordRange.first);
         execute(SCI_SETSELECTIONEND, wordRange.second);
 		return true;
@@ -3320,7 +3332,9 @@ void ScintillaEditView::hideLines()
 			execute(SCI_MARKERDELETE, i, MARK_HIDELINESEND);
 			if (scope > 0) scope--;
 		}
-		if (openPresent) {
+
+		if (openPresent)
+		{
 			execute(SCI_MARKERDELETE, i, MARK_HIDELINESBEGIN);
 			execute(SCI_MARKERDELETE, i, MARK_HIDELINESUNDERLINE);
 			++scope;
@@ -3368,11 +3382,13 @@ bool ScintillaEditView::markerMarginClick(int lineNumber)
 	return true;
 }
 
-void ScintillaEditView::notifyMarkers(Buffer * buf, bool isHide, int location, bool del) {
+void ScintillaEditView::notifyMarkers(Buffer * buf, bool isHide, int location, bool del)
+{
 	if (buf != _currentBuffer)	//if not visible buffer dont do a thing
 		return;
 	runMarkers(isHide, location, false, del);
 }
+
 //Run through full document. When switching in or opening folding
 //hide is false only when user click on margin
 void ScintillaEditView::runMarkers(bool doHide, size_t searchStart, bool endOfDoc, bool doDelete)
