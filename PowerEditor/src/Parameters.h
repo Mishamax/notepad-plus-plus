@@ -802,7 +802,7 @@ struct NppGUI final
 	int _tabSize = 4;
 	bool _tabReplacedBySpace = true;
 
-	int _fileAutoDetection = cdEnabledNew;
+	int _fileAutoDetection = cdDisabled;
 
 	bool _checkHistoryFiles = false;
 
