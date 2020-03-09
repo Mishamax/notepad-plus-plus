@@ -416,7 +416,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int)
 		::MessageBox(NULL, COMMAND_ARG_HELP, TEXT("Notepad++ Command Argument Help"), MB_OK);
 
 	NppParameters& nppParameters = NppParameters::getInstance();
+
+	if (cmdLineParams._localizationPath != TEXT(""))
+	{
+		// setStartWithLocFileName() should be called before parameters are loaded
+		nppParameters.setStartWithLocFileName(cmdLineParams._localizationPath);
+	}
+
+	nppParameters.load();
 	NppGUI & nppGui = const_cast<NppGUI &>(nppParameters.getNppGUI());
+
 	bool doUpdateNpp = nppGui._autoUpdateOpt._doAutoUpdate;
 	bool doUpdatePluginList = nppGui._autoUpdateOpt._doAutoUpdate;
 
@@ -426,12 +435,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int)
 		doUpdateNpp = doUpdatePluginList = false;
 		cmdLineParams._isNoSession = true;
 	}
-
-	if (cmdLineParams._localizationPath != TEXT(""))
-	{
-		nppParameters.setStartWithLocFileName(cmdLineParams._localizationPath);
-	}
-	nppParameters.load();
 
 	nppParameters.setFunctionListExportBoolean(doFunctionListExport);
 	nppParameters.setPrintAndExitBoolean(doPrintAndQuit);

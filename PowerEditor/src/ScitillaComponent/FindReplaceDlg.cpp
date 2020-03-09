@@ -297,7 +297,17 @@ void FindReplaceDlg::create(int dialogID, bool isRTL, bool msgDestParent)
 	if (enableDlgTheme)
 		enableDlgTheme(_hSelf, ETDT_ENABLETAB);
 
-	goToCenter();
+	NppParameters& nppParam = NppParameters::getInstance();
+	NppGUI& nppGUI = const_cast<NppGUI&>(nppParam.getNppGUI());
+	if (nppGUI._findWindowPos.bottom - nppGUI._findWindowPos.top != 0)  // check height against 0 as a test of valid data from config
+	{
+		RECT rc = getViewablePositionRect(nppGUI._findWindowPos);
+		::SetWindowPos(_hSelf, HWND_TOP, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, SWP_SHOWWINDOW);
+	}
+	else
+	{
+		goToCenter();
+	}
 }
 
 void FindReplaceDlg::fillFindHistory()
@@ -1029,8 +1039,6 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 					updateCombo(IDFINDWHAT);
 
 					nppParamInst._isFindReplacing = true;
-					if (isMacroRecording)
-						saveInMacro(wParam, FR_OP_FIND);
 
 					bool direction_bak = _options._whichDirection;
 
@@ -1052,6 +1060,9 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 							_options._whichDirection = !_options._whichDirection;
 						}
 					}
+
+					if (isMacroRecording)
+						saveInMacro(IDOK, FR_OP_FIND);
 
 					FindStatus findStatus = FSFound;
 					processFindNext(_options._str2Search.c_str(), _env, &findStatus);
@@ -1874,7 +1885,7 @@ int FindReplaceDlg::processAll(ProcessOperation op, const FindOption *opt, bool 
 		startPosition = cr.cpMin;
 		endPosition = cr.cpMax;
 	}
-	else if (pOptions->_isWrapAround || isEntire || op == ProcessCountAll)	//entire document needs to be scanned
+	else if (pOptions->_isWrapAround || isEntire)	//entire document needs to be scanned
 	{
 		startPosition = 0;
 		endPosition = docLength;
@@ -2577,7 +2588,7 @@ void FindReplaceDlg::setStatusbarMessage(const generic_string & msg, FindStatus 
 {
 	if (staus == FSNotFound)
 	{
-		::MessageBeep(0xFFFFFFFF);
+		::PlaySound((LPCTSTR)SND_ALIAS_SYSTEMASTERISK, NULL, SND_ALIAS_ID | SND_ASYNC);
 
 		FLASHWINFO flashInfo;
 		flashInfo.cbSize = sizeof(FLASHWINFO);
@@ -2654,24 +2665,6 @@ void FindReplaceDlg::execSavedCommand(int cmd, uptr_t intValue, const generic_st
 						processFindNext(_env->_str2Search.c_str());
 						nppParamInst._isFindReplacing = false;
 						break;
-
-					case IDC_FINDNEXT:
-					{
-						nppParamInst._isFindReplacing = true;
-						_options._whichDirection = DIR_DOWN;
-						processFindNext(_env->_str2Search.c_str());
-						nppParamInst._isFindReplacing = false;
-					}
-					break;
-					
-					case IDC_FINDPREV:
-					{
-						nppParamInst._isFindReplacing = true;
-						_env->_whichDirection = DIR_UP;
-						processFindNext(_env->_str2Search.c_str());
-						nppParamInst._isFindReplacing = false;
-					}
-					break;
 
 					case IDREPLACE:
 						nppParamInst._isFindReplacing = true;
@@ -2924,7 +2917,7 @@ void FindReplaceDlg::doDialog(DIALOG_TYPE whichType, bool isRTL, bool toShow)
 		enableReplaceFunc(whichType == REPLACE_DLG);
 
 	::SetFocus(::GetDlgItem(_hSelf, IDFINDWHAT));
-    display(toShow);
+    display(toShow, true);
 }
 
 LRESULT FAR PASCAL FindReplaceDlg::finderProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
