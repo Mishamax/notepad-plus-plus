@@ -1,5 +1,5 @@
 ﻿// This file is part of Notepad++ project
-// Copyright (C)2003 Don HO <don.h@free.fr>
+// Copyright (C)2020 Don HO <don.h@free.fr>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -2662,6 +2662,24 @@ void FindReplaceDlg::execSavedCommand(int cmd, uptr_t intValue, const generic_st
 				{
 					case IDOK:
 						nppParamInst._isFindReplacing = true;
+						processFindNext(_env->_str2Search.c_str());
+						nppParamInst._isFindReplacing = false;
+						break;
+
+					case IDC_FINDNEXT:
+						// IDC_FINDNEXT will not be recorded into new macros recorded with 7.8.5 and later
+						// stay playback compatible with 7.5.5 - 7.8.4 where IDC_FINDNEXT was allowed but unneeded/undocumented
+						nppParamInst._isFindReplacing = true;
+						_env->_whichDirection = DIR_DOWN;
+						processFindNext(_env->_str2Search.c_str());
+						nppParamInst._isFindReplacing = false;
+						break;
+
+					case IDC_FINDPREV:
+						// IDC_FINDPREV will not be recorded into new macros recorded with 7.8.5 and later
+						// stay playback compatible with 7.5.5 - 7.8.4 where IDC_FINDPREV was allowed but unneeded/undocumented
+						nppParamInst._isFindReplacing = true;
+						_env->_whichDirection = DIR_UP;
 						processFindNext(_env->_str2Search.c_str());
 						nppParamInst._isFindReplacing = false;
 						break;

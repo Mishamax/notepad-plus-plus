@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <NotepadPlus>
-    <Native-Langue name="繁體中文/正體中文" filename="chinese.xml" version="7.8.3">
+    <Native-Langue name="台灣繁體" filename="taiwaneseMandarin.xml" version="7.8.6">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -336,9 +336,9 @@
                     <Item CMID="4"  name="列印"/>
                     <Item CMID="5"  name="移動此檔案至另一個視窗"/>
                     <Item CMID="6"  name="複製此檔案至另一個視窗"/>
-                    <Item CMID="7"  name="將資料夾路徑複製到剪貼簿"/>
+                    <Item CMID="7"  name="將資料夾路徑及檔案名稱複製到剪貼簿"/>
                     <Item CMID="8"  name="將檔案名稱複製到剪貼簿"/>
-                    <Item CMID="9"  name="將資料夾路徑及檔案名稱複製到剪貼簿"/>
+                    <Item CMID="9"  name="將資料夾路徑複製到剪貼簿"/>
                     <Item CMID="10" name="重新命名此檔案"/>
                     <Item CMID="11" name="刪除現有檔案"/>
                     <Item CMID="12" name="將此檔案設為唯讀"/>
@@ -742,12 +742,12 @@
                     <Item id="6206" name="顯示行號"/>
                     <Item id="6207" name="顯示標記"/>
                     <Item id="6208" name="顯示邊界線"/>
-                    <Item id="6209" name="字元數："/>
                     <Item id="6234" name="關閉進階捲動功能
 （若有觸控板問題）"/>
                     <Item id="6211" name="邊緣線設定"/>
-                    <Item id="6212" name="垂直線模式"/>
                     <Item id="6213" name="背景色模式"/>
+                    <Item id="6237" name="如欲添加列標記可以在下面以數字指示其列位置。
+使用空格分隔不同數字來定義多個列標記。"/>
                     <Item id="6214" name="於游標行加上背景顏色"/>
                     <Item id="6215" name="啟用平滑字體"/>
                     <Item id="6231" name="邊框寬度"/>

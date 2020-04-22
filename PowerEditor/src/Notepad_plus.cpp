@@ -1,5 +1,5 @@
 ﻿// This file is part of Notepad++ project
-// Copyright (C)2003 Don HO <don.h@free.fr>
+// Copyright (C)2020 Don HO <don.h@free.fr>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -291,10 +291,7 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	_mainEditView.wrap(svp1._doWrap);
 	_subEditView.wrap(svp1._doWrap);
 
-	_mainEditView.execute(SCI_SETEDGECOLUMN, svp1._edgeNbColumn);
-	_mainEditView.execute(SCI_SETEDGEMODE, svp1._edgeMode);
-	_subEditView.execute(SCI_SETEDGECOLUMN, svp1._edgeNbColumn);
-	_subEditView.execute(SCI_SETEDGEMODE, svp1._edgeMode);
+	::SendMessage(hwnd, NPPM_INTERNAL_EDGEMULTISETSIZE, 0, 0);
 
 	_mainEditView.showEOL(svp1._eolShow);
 	_subEditView.showEOL(svp1._eolShow);
@@ -3580,6 +3577,23 @@ bool Notepad_plus::removeBufferFromView(BufferID id, int whichOne)
 			{
 				toActivate = active;    //activate the 'active' index. Since we remove the tab first, the indices shift (on the right side)
 			}
+
+			if (NppParameters::getInstance().getNppGUI()._styleMRU)
+			{
+				// After closing a file choose the file to activate based on MRU list and not just last file in the list.
+				TaskListInfo taskListInfo;
+				::SendMessage(_pPublicInterface->getHSelf(), WM_GETTASKLISTINFO, reinterpret_cast<WPARAM>(&taskListInfo), 0);
+				size_t i, n = taskListInfo._tlfsLst.size();
+				for (i = 0; i < n; i++)
+				{
+					TaskLstFnStatus& tfs = taskListInfo._tlfsLst[i];
+					if (tfs._iView != whichOne || tfs._bufID == id)
+						continue;
+					toActivate = tfs._docIndex >= active ? tfs._docIndex - 1 : tfs._docIndex;
+					break;
+				}
+			}
+
 			tabToClose->deletItemAt((size_t)index); //delete first
 			_isFolding = true; // So we can ignore events while folding is taking place
 			activateBuffer(tabToClose->getBufferByIndex(toActivate), whichOne);     //then activate. The prevent jumpy tab behaviour

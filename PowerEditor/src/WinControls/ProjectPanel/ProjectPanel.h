@@ -1,5 +1,5 @@
 // This file is part of Notepad++ project
-// Copyright (C)2003 Don HO <don.h@free.fr>
+// Copyright (C)2020 Don HO <don.h@free.fr>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -68,7 +68,7 @@ class FileDialog;
 class ProjectPanel : public DockingDlgInterface {
 public:
 	ProjectPanel(): DockingDlgInterface(IDD_PROJECTPANEL) {};
-
+	~ProjectPanel();
 
 	void init(HINSTANCE hInst, HWND hPere) {
 		DockingDlgInterface::init(hInst, hPere);
@@ -140,6 +140,7 @@ protected:
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
 	void setFileExtFilter(FileDialog & fDlg);
+	std::vector<generic_string*> fullPathStrs;
 };
 
 class FileRelocalizerDlg : public StaticDialog
