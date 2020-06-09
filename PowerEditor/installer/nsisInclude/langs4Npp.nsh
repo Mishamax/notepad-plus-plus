@@ -283,9 +283,11 @@ SectionGroup "Localization" localization
 	${MementoUnselectedSection} "Kurdish" kurdish
 		CopyFiles "$PLUGINSDIR\nppLocalization\kurdish.xml" "$INSTDIR\localization\kurdish.xml"
 	${MementoSectionEnd}
+	/*
 	${MementoUnselectedSection} "Irish" irish
 		CopyFiles "$PLUGINSDIR\nppLocalization\iriish.xml" "$INSTDIR\localization\irish.xml"
 	${MementoSectionEnd}
+	*/
 	${MementoUnselectedSection} "Piglatin" piglatin
 		CopyFiles "$PLUGINSDIR\nppLocalization\piglatin.xml" "$INSTDIR\localization\piglatin.xml"
 	${MementoSectionEnd}
@@ -294,6 +296,9 @@ SectionGroup "Localization" localization
 	${MementoSectionEnd}
 	${MementoUnselectedSection} "Venetian" venetian
 		CopyFiles "$PLUGINSDIR\nppLocalization\venetian.xml" "$INSTDIR\localization\venetian.xml"
+	${MementoSectionEnd}
+	${MementoUnselectedSection} "Nepali" nepali
+		CopyFiles "$PLUGINSDIR\nppLocalization\nepali.xml" "$INSTDIR\localization\nepali.xml"
 	${MementoSectionEnd}
 SectionGroupEnd
 
@@ -565,5 +570,8 @@ SectionGroup un.localization
 	SectionEnd
 	Section un.venetian
 		Delete "$INSTDIR\localization\venetian.xml"
+	SectionEnd
+	Section un.nepali
+		Delete "$INSTDIR\localization\nepali.xml"
 	SectionEnd
 SectionGroupEnd

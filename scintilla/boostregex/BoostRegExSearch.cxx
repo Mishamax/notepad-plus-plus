@@ -11,6 +11,9 @@
 
 #include <stdlib.h>
 #include <iterator> 
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "Scintilla.h"

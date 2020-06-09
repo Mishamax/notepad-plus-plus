@@ -1854,7 +1854,6 @@ void ScintillaEditView::restoreCurrentPosPostStep()
 	if (!_positionRestoreNeeded)
 		return;
 
-	static int32_t restoreDone = 0;
 	Buffer * buf = MainFileManager.getBufferByID(_currentBufferID);
 	Position & pos = buf->getPosition(this);
 
@@ -2613,6 +2612,15 @@ void ScintillaEditView::performGlobalStyles()
 	}
 	execute(SCI_SETFOLDMARGINCOLOUR, true, foldMarginColor);
 	execute(SCI_SETFOLDMARGINHICOLOUR, true, foldMarginHiColor);
+
+	COLORREF urlHoveredFG = grey;
+	i = stylers.getStylerIndexByName(TEXT("URL hovered"));
+	if (i != -1)
+	{
+		Style & style = stylers.getStyler(i);
+		urlHoveredFG = style._fgColor;
+	}
+	execute(SCI_INDICSETHOVERFORE, URL_INDIC, urlHoveredFG);
 
 	COLORREF foldfgColor = white, foldbgColor = grey, activeFoldFgColor = red;
 	getFoldColor(foldfgColor, foldbgColor, activeFoldFgColor);

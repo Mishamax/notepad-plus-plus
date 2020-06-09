@@ -211,7 +211,8 @@ BufferID Notepad_plus::doOpen(const generic_string& fileName, bool isRecursive, 
 	if (isFileWorkspace(longFileName) && PathFileExists(longFileName))
 	{
 		nppParam.setWorkSpaceFilePath(0, longFileName);
-		command(IDM_VIEW_PROJECT_PANEL_1);
+		_isWorkspaceFileLoadedFromCommandLine = true;
+//		command(IDM_VIEW_PROJECT_PANEL_1);
 		return BUFFER_INVALID;
 	}
 
@@ -738,7 +739,7 @@ void Notepad_plus::doClose(BufferID id, int whichOne, bool doDeleteBackup)
 	return;
 }
 
-generic_string Notepad_plus::exts2Filters(const generic_string& exts) const
+generic_string Notepad_plus::exts2Filters(const generic_string& exts, int maxExtsLen) const
 {
 	const TCHAR *extStr = exts.c_str();
 	TCHAR aExt[MAX_PATH];
@@ -746,6 +747,7 @@ generic_string Notepad_plus::exts2Filters(const generic_string& exts) const
 
 	int j = 0;
 	bool stop = false;
+
 	for (size_t i = 0, len = exts.length(); i < len && j < MAX_PATH - 1; ++i)
 	{
 		if (extStr[i] == ' ')
@@ -762,6 +764,12 @@ generic_string Notepad_plus::exts2Filters(const generic_string& exts) const
 					filters += TEXT(";");
 				}
 				j = 0;
+
+				if (maxExtsLen != -1 && i >= static_cast<size_t>(maxExtsLen))
+				{
+					filters += TEXT(" ... ");
+					break;
+				}
 			}
 		}
 		else
@@ -788,7 +796,7 @@ generic_string Notepad_plus::exts2Filters(const generic_string& exts) const
 	return filters;
 }
 
-int Notepad_plus::setFileOpenSaveDlgFilters(FileDialog & fDlg, int langType)
+int Notepad_plus::setFileOpenSaveDlgFilters(FileDialog & fDlg, bool showAllExt, int langType)
 {
 	NppParameters& nppParam = NppParameters::getInstance();
 	NppGUI & nppGUI = (NppGUI & )nppParam.getNppGUI();
@@ -834,7 +842,7 @@ int Notepad_plus::setFileOpenSaveDlgFilters(FileDialog & fDlg, int langType)
 				list += userList;
 			}
 
-			generic_string stringFilters = exts2Filters(list);
+			generic_string stringFilters = exts2Filters(list, showAllExt ? -1 : 40);
 			const TCHAR *filters = stringFilters.c_str();
 			if (filters[0])
 			{
@@ -1582,10 +1590,10 @@ bool Notepad_plus::fileSaveAs(BufferID id, bool isSaveCopy)
 	FileDialog fDlg(_pPublicInterface->getHSelf(), _pPublicInterface->getHinst());
 
     fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
-	int langTypeIndex = setFileOpenSaveDlgFilters(fDlg, buf->getLangType());
+	int langTypeIndex = setFileOpenSaveDlgFilters(fDlg, false, buf->getLangType());
 	fDlg.setDefFileName(buf->getFileName());
 
-    fDlg.setExtIndex(langTypeIndex+1); // +1 for "All types"
+    fDlg.setExtIndex(langTypeIndex + 1); // +1 for "All types"
 
 	// Disable file autodetection before opening save dialog to prevent use-after-delete bug.
 	NppParameters& nppParam = NppParameters::getInstance();
@@ -1614,7 +1622,7 @@ bool Notepad_plus::fileSaveAs(BufferID id, bool isSaveCopy)
 		{
 			_nativeLangSpeaker.messageBox("FileAlreadyOpenedInNpp",
 				_pPublicInterface->getHSelf(),
-				TEXT("The file is already opened in the Notepad++."),
+				TEXT("The file is already opened in Notepad++."),
 				TEXT("ERROR"),
 				MB_OK | MB_ICONSTOP);
 			switchToFile(other);
@@ -1648,7 +1656,7 @@ bool Notepad_plus::fileRename(BufferID id)
 		FileDialog fDlg(_pPublicInterface->getHSelf(), _pPublicInterface->getHinst());
 
 		fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
-		setFileOpenSaveDlgFilters(fDlg);
+		setFileOpenSaveDlgFilters(fDlg, false);
 
 		fDlg.setDefFileName(buf->getFileName());
 		TCHAR *pfn = fDlg.doSaveDlg();
@@ -1758,7 +1766,7 @@ void Notepad_plus::fileOpen()
     FileDialog fDlg(_pPublicInterface->getHSelf(), _pPublicInterface->getHinst());
 	fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
 
-	setFileOpenSaveDlgFilters(fDlg);
+	setFileOpenSaveDlgFilters(fDlg, true);
 
 	BufferID lastOpened = BUFFER_INVALID;
 	if (stringVector *pfns = fDlg.doOpenMultiFilesDlg())
@@ -1820,7 +1828,8 @@ bool Notepad_plus::isFileSession(const TCHAR * filename)
 	return false;
 }
 
-bool Notepad_plus::isFileWorkspace(const TCHAR * filename) {
+bool Notepad_plus::isFileWorkspace(const TCHAR * filename)
+{
 	// if filename matches the ext of user defined workspace file ext, then it'll be opened as a workspace
 	const TCHAR *definedWorkspaceExt = NppParameters::getInstance().getNppGUI()._definedWorkspaceExt.c_str();
 	if (*definedWorkspaceExt != '\0')
@@ -2120,6 +2129,7 @@ bool Notepad_plus::fileLoadSession(const TCHAR *fn)
 				sessionExt += TEXT(".");
 			sessionExt += ext;
 			fDlg.setExtFilter(TEXT("Session file"), sessionExt.c_str(), NULL);
+			fDlg.setDefExt(ext);
 		}
 		fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
 		sessionFileName = fDlg.doOpenSingleFileDlg();
@@ -2216,6 +2226,7 @@ const TCHAR * Notepad_plus::fileSaveSession(size_t nbFile, TCHAR ** fileNames)
 			sessionExt += TEXT(".");
 		sessionExt += ext;
 		fDlg.setExtFilter(TEXT("Session file"), sessionExt.c_str(), NULL);
+		fDlg.setDefExt(ext);
 		fDlg.setExtIndex(0);		// 0 index for "custom extension types"
 	}
 	fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
