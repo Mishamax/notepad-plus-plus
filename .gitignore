@@ -71,6 +71,7 @@ PowerEditor/bin/backup/
 PowerEditor/bin/localization/
 PowerEditor/bin/plugins/
 PowerEditor/bin/updater/
+PowerEditor/bin/themes/
 PowerEditor/bin64/notepad++.exe
 PowerEditor/bin64/SciLexer.dll
 PowerEditor/bin64/config.xml
@@ -89,6 +90,7 @@ PowerEditor/bin64/backup/
 PowerEditor/bin64/localization/
 PowerEditor/bin64/plugins/
 PowerEditor/bin64/updater/
+PowerEditor/bin64/themes/
 PowerEditor/installer/bin/wingup/
 PowerEditor/installer/build/
 PowerEditor/installer/minimalist/

@@ -219,7 +219,8 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case WM_FINDALL_INCURRENTDOC:
 		{
-			return findInCurrentFile();
+			const bool isEntireDoc = wParam == 0;
+			return findInCurrentFile(isEntireDoc);
 		}
 
 		case WM_FINDINFILES:
@@ -523,6 +524,9 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				_pDocMap->doMove();
 				_pDocMap->reloadMap();
 			}
+
+			addHotSpot(_pEditView);
+			addHotSpot(_pNonEditView);
 
 			result = TRUE;
 			break;
@@ -1642,6 +1646,10 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		case WM_ACTIVATE:
 		{
 			_pEditView->getFocus();
+			auto x = _pEditView->execute(SCI_GETXOFFSET);
+			_pEditView->execute(SCI_SETXOFFSET, x);
+			x = _pNonEditView->execute(SCI_GETXOFFSET);
+			_pNonEditView->execute(SCI_SETXOFFSET, x);
 			return TRUE;
 		}
 
@@ -1656,9 +1664,11 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			//reset styler for change in Stylers.xml
 			_mainEditView.defineDocType(_mainEditView.getCurrentBuffer()->getLangType());
 			_mainEditView.performGlobalStyles();
+			addHotSpot(& _mainEditView);
 
 			_subEditView.defineDocType(_subEditView.getCurrentBuffer()->getLangType());
 			_subEditView.performGlobalStyles();
+			addHotSpot(& _subEditView);
 
 			_findReplaceDlg.updateFinderScintilla();
 
@@ -2473,7 +2483,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 						//loop through nmdlg->nItems, get index and save it
 						for (unsigned int i = 0; i < nmdlg->nItems; ++i)
 						{
-							fileSave(_pDocTab->getBufferByIndex(i));
+							fileSave(_pDocTab->getBufferByIndex(nmdlg->Items[i]));
 						}
 						nmdlg->processed = TRUE;
 						break;
