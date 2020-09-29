@@ -35,6 +35,7 @@
 #include "VerticalFileSwitcher.h"
 #include "documentMap.h"
 #include "functionListPanel.h"
+#include "ProjectPanel.h"
 #include "fileBrowser.h"
 #include "Sorters.h"
 #include "verifySignedfile.h"
@@ -130,7 +131,8 @@ void Notepad_plus::command(int id)
 				if (_pFileBrowser == nullptr) // first launch, check in params to open folders
 				{
 					vector<generic_string> dummy;
-					launchFileBrowser(dummy);
+					generic_string emptyStr;
+					launchFileBrowser(dummy, emptyStr);
 					if (_pFileBrowser != nullptr)
 					{
 						checkMenuItem(IDM_VIEW_FILEBROWSER, true);
@@ -550,6 +552,7 @@ void Notepad_plus::command(int id)
 		case IDM_EDIT_SORTLINES_DECIMALCOMMA_DESCENDING:
 		case IDM_EDIT_SORTLINES_DECIMALDOT_ASCENDING:
 		case IDM_EDIT_SORTLINES_DECIMALDOT_DESCENDING:
+		case IDM_EDIT_SORTLINES_RANDOMLY:
 		{
 			std::lock_guard<std::mutex> lock(command_mutex);
 
@@ -619,9 +622,13 @@ void Notepad_plus::command(int id)
 			{
 				pSorter = std::unique_ptr<ISorter>(new DecimalCommaSorter(isDescending, fromColumn, toColumn));
 			}
-			else
+			else if (id == IDM_EDIT_SORTLINES_DECIMALDOT_DESCENDING || id == IDM_EDIT_SORTLINES_DECIMALDOT_ASCENDING)
 			{
 				pSorter = std::unique_ptr<ISorter>(new DecimalDotSorter(isDescending, fromColumn, toColumn));
+			}
+			else
+			{
+				pSorter = std::unique_ptr<ISorter>(new RandomSorter(isDescending, fromColumn, toColumn));
 			}
 			try
 			{
@@ -682,27 +689,55 @@ void Notepad_plus::command(int id)
 		break;
 
 		case IDM_VIEW_PROJECT_PANEL_1:
-		{
-			launchProjectPanel(id, &_pProjectPanel_1, 0);
-		}
-		break;
 		case IDM_VIEW_PROJECT_PANEL_2:
-		{
-			launchProjectPanel(id, &_pProjectPanel_2, 1);
-		}
-		break;
 		case IDM_VIEW_PROJECT_PANEL_3:
 		{
-			launchProjectPanel(id, &_pProjectPanel_3, 2);
+			ProjectPanel** pp [] = {&_pProjectPanel_1, &_pProjectPanel_2, &_pProjectPanel_3};
+			int idx = id - IDM_VIEW_PROJECT_PANEL_1;
+			if (*pp [idx] == nullptr)
+			{
+				launchProjectPanel(id, pp [idx], idx);
+			}
+			else
+			{
+				if (not (*pp[idx])->isClosed())
+				{
+					if ((*pp[idx])->checkIfNeedSave())
+					{
+						if (::IsChild((*pp[idx])->getHSelf(), ::GetFocus()))
+							::SetFocus(_pEditView->getHSelf());
+						(*pp[idx])->display(false);
+						(*pp[idx])->setClosed(true);
+						checkMenuItem(id, false);
+						checkProjectMenuItem();
+					}
+				}
+				else
+				{
+					launchProjectPanel(id, pp [idx], idx);
+				}
+			}
 		}
 		break;
 
+		case IDM_VIEW_SWITCHTO_PROJECT_PANEL_1:
+		case IDM_VIEW_SWITCHTO_PROJECT_PANEL_2:
+		case IDM_VIEW_SWITCHTO_PROJECT_PANEL_3:
+		{
+			ProjectPanel** pp [] = {&_pProjectPanel_1, &_pProjectPanel_2, &_pProjectPanel_3};
+			int idx = id - IDM_VIEW_SWITCHTO_PROJECT_PANEL_1;
+			launchProjectPanel(id - IDM_VIEW_SWITCHTO_PROJECT_PANEL_1 + IDM_VIEW_PROJECT_PANEL_1, pp [idx], idx);
+		}
+		break;
+
+
 		case IDM_VIEW_FILEBROWSER:
+		case IDM_VIEW_SWITCHTO_FILEBROWSER:
 		{
 			if (_pFileBrowser == nullptr) // first launch, check in params to open folders
 			{
 				NppParameters& nppParam = NppParameters::getInstance();
-				launchFileBrowser(nppParam.getFileBrowserRoots());
+				launchFileBrowser(nppParam.getFileBrowserRoots(), nppParam.getFileBrowserSelectedItemPath());
 				if (_pFileBrowser != nullptr)
 				{
 					checkMenuItem(IDM_VIEW_FILEBROWSER, true);
@@ -712,7 +747,7 @@ void Notepad_plus::command(int id)
 			}
 			else
 			{
-				if (not _pFileBrowser->isClosed())
+				if (!_pFileBrowser->isClosed() && (id != IDM_VIEW_SWITCHTO_FILEBROWSER))
 				{
 					_pFileBrowser->display(false);
 					_pFileBrowser->setClosed(true);
@@ -722,7 +757,8 @@ void Notepad_plus::command(int id)
 				else
 				{
 					vector<generic_string> dummy;
-					launchFileBrowser(dummy);
+					generic_string emptyStr;
+					launchFileBrowser(dummy, emptyStr);
 					checkMenuItem(IDM_VIEW_FILEBROWSER, true);
 					_toolBar.setCheck(IDM_VIEW_FILEBROWSER, true);
 					_pFileBrowser->setClosed(false);
@@ -754,9 +790,25 @@ void Notepad_plus::command(int id)
 		}
 		break;
 
+		case IDM_VIEW_SWITCHTO_FUNC_LIST:
+		{
+			if (_pFuncList && _pFuncList->isVisible())
+			{
+				_pFuncList->getFocus();
+			}
+			else
+			{
+				checkMenuItem(IDM_VIEW_FUNC_LIST, true);
+				_toolBar.setCheck(IDM_VIEW_FUNC_LIST, true);
+				launchFunctionList();
+				_pFuncList->setClosed(false);
+			}
+		}
+		break;
+		
 		case IDM_VIEW_FUNC_LIST:
 		{
-			if (_pFuncList && (not _pFuncList->isClosed()))
+			if (_pFuncList && (!_pFuncList->isClosed()))
 			{
 				_pFuncList->display(false);
 				_pFuncList->setClosed(true);
@@ -1397,12 +1449,30 @@ void Notepad_plus::command(int id)
 			break;
 
 		case IDM_EDIT_INS_TAB:
-			_pEditView->execute(SCI_TAB);
-			break;
-
 		case IDM_EDIT_RMV_TAB:
-			_pEditView->execute(SCI_BACKTAB);
-			break;
+		{
+			bool forwards = id == IDM_EDIT_INS_TAB;
+			int selStartPos = static_cast<int>(_pEditView->execute(SCI_GETSELECTIONSTART));
+			int lineNumber = static_cast<int>(_pEditView->execute(SCI_LINEFROMPOSITION, selStartPos));
+			int numSelections = static_cast<int>(_pEditView->execute(SCI_GETSELECTIONS));
+			int selEndPos = static_cast<int>(_pEditView->execute(SCI_GETSELECTIONEND));
+			int selEndLineNumber = static_cast<int>(_pEditView->execute(SCI_LINEFROMPOSITION, selEndPos));
+			if ((numSelections > 1) || (lineNumber != selEndLineNumber))
+			{
+				// multiple-selection or multi-line selection; use Scintilla SCI_TAB / SCI_BACKTAB behavior
+				_pEditView->execute(forwards ? SCI_TAB : SCI_BACKTAB);
+			}
+			else
+			{
+				// zero-length selection (simple single caret) or selected text is all on single line
+				// depart from Scintilla behavior and do it our way
+				int currentIndent = static_cast<int>(_pEditView->execute(SCI_GETLINEINDENTATION, lineNumber));
+				int indentDelta = static_cast<int>(_pEditView->execute(SCI_GETTABWIDTH));
+				if (!forwards) indentDelta = -indentDelta;
+				_pEditView->setLineIndent(lineNumber, currentIndent + indentDelta);
+			}
+		}
+		break;
 
 		case IDM_EDIT_DUP_LINE:
 			_pEditView->execute(SCI_LINEDUPLICATE);
@@ -3450,6 +3520,7 @@ void Notepad_plus::command(int id)
 			case IDM_EDIT_SORTLINES_DECIMALCOMMA_DESCENDING:
 			case IDM_EDIT_SORTLINES_DECIMALDOT_ASCENDING:
 			case IDM_EDIT_SORTLINES_DECIMALDOT_DESCENDING:
+			case IDM_EDIT_SORTLINES_RANDOMLY:
 			case IDM_EDIT_BLANKLINEABOVECURRENT:
 			case IDM_EDIT_BLANKLINEBELOWCURRENT:
 			case IDM_VIEW_FULLSCREENTOGGLE :
