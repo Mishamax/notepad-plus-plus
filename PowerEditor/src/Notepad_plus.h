@@ -61,8 +61,6 @@
 #define MENU 0x01
 #define TOOLBAR 0x02
 
-#define URL_REG_EXPR "[A-Za-z]+://[A-Za-z0-9_\\-\\+~.:?&@=/%#,;\\|\\*\\!\\$\\\\]+"
-
 enum FileTransferMode {
 	TransferClone		= 0x01,
 	TransferMove		= 0x02
@@ -261,6 +259,9 @@ public:
 		return _pluginsAdminDlg.getPluginListVerStr();
 	};
 
+	void minimizeDialogs();
+	void restoreMinimizeDialogs();
+
 private:
 	Notepad_plus_Window *_pPublicInterface = nullptr;
     Window *_pMainWindow = nullptr;
@@ -293,6 +294,7 @@ private:
 
 	ToolBar	_toolBar;
 	IconList _docTabIconList;
+	IconList _docTabIconListAlt;
 
     StatusBar _statusBar;
 	bool _toReduceTabBar = false;
@@ -404,6 +406,8 @@ private:
 	DocumentMap* _pDocMap = nullptr;
 	FunctionListPanel* _pFuncList = nullptr;
 
+	std::vector<HWND> _sysTrayHiddenHwnd;
+
 	BOOL notify(SCNotification *notification);
 	void command(int id);
 
@@ -465,6 +469,7 @@ private:
 	void checkUndoState();
 	void checkMacroState();
 	void checkSyncState();
+	void setupColorSampleBitmapsOnMainMenuItems();
 	void dropFiles(HDROP hdrop);
 	void checkModifiedDocument(bool bCheckOnlyCurrentBuffer);
 
@@ -566,6 +571,7 @@ private:
 	void showPathCompletion();
 
 	//void changeStyleCtrlsLang(HWND hDlg, int *idArray, const char **translatedText);
+	void setCodePageForInvisibleView(Buffer const* pBuffer);
 	bool replaceInOpenedFiles();
 	bool findInOpenedFiles();
 	bool findInCurrentFile(bool isEntireDoc);

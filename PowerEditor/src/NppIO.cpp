@@ -561,8 +561,7 @@ bool Notepad_plus::doSave(BufferID id, const TCHAR * filename, bool isCopy)
 		_pluginsManager.notify(&scnN);
 	}
 
-	generic_string error_msg;
-	bool res = MainFileManager.saveBuffer(id, filename, isCopy, &error_msg);
+	SavingStatus res = MainFileManager.saveBuffer(id, filename, isCopy);
 
 	if (!isCopy)
 	{
@@ -570,7 +569,15 @@ bool Notepad_plus::doSave(BufferID id, const TCHAR * filename, bool isCopy)
 		_pluginsManager.notify(&scnN);
 	}
 
-	if (!res)
+	if (res == SavingStatus::SaveWrittingFailed)
+	{
+		_nativeLangSpeaker.messageBox("NotEnoughRoom4Saving",
+			_pPublicInterface->getHSelf(),
+			TEXT("Failed to save file.\nIt seems there's not enough space on disk to save file."),
+			TEXT("Save failed"),
+			MB_OK);
+	}
+	else if (res == SavingStatus::SaveOpenFailed)
 	{
 		// try to open Notepad++ in admin mode
 		if (!_isAdministrator)
@@ -580,7 +587,7 @@ bool Notepad_plus::doSave(BufferID id, const TCHAR * filename, bool isCopy)
 			{                   // Open the 2nd Notepad++ instance in Admin mode, then close the 1st instance.
 				int openInAdminModeRes = _nativeLangSpeaker.messageBox("OpenInAdminMode",
 				_pPublicInterface->getHSelf(),
-				TEXT("The file cannot be saved and it may be protected.\rDo you want to launch Notepad++ in Administrator mode?"),
+				TEXT("This file cannot be saved and it may be protected.\rDo you want to launch Notepad++ in Administrator mode?"),
 				TEXT("Save failed"),
 				MB_YESNO);
 
@@ -652,29 +659,14 @@ bool Notepad_plus::doSave(BufferID id, const TCHAR * filename, bool isCopy)
 			}
 
 		}
-		else
-		{
-
-			if (error_msg.empty())
-			{
-				_nativeLangSpeaker.messageBox("FileLockedWarning",
-					_pPublicInterface->getHSelf(),
-					TEXT("Please check if this file is opened in another program."),
-					TEXT("Save failed"),
-					MB_OK);
-			}
-			else
-			{
-				::MessageBox(_pPublicInterface->getHSelf(), error_msg.c_str(), TEXT("Save failed"), MB_OK);
-			}
-		}
 	}
 
-	if (res && _pFuncList && (!_pFuncList->isClosed()) && _pFuncList->isVisible())
+	if (res == SavingStatus::SaveOK && _pFuncList && (!_pFuncList->isClosed()) && _pFuncList->isVisible())
 	{
 		_pFuncList->reload();
 	}
-	return res;
+
+	return res == SavingStatus::SaveOK;
 }
 
 void Notepad_plus::doClose(BufferID id, int whichOne, bool doDeleteBackup)
@@ -746,6 +738,8 @@ void Notepad_plus::doClose(BufferID id, int whichOne, bool doDeleteBackup)
 		// if the current activated buffer is in this view,
 		// then get buffer ID to remove the entry from File Switcher Pannel
 		hiddenBufferID = reinterpret_cast<BufferID>(::SendMessage(_pPublicInterface->getHSelf(), NPPM_GETBUFFERIDFROMPOS, 0, whichOne));
+		if (!isBufRemoved && hiddenBufferID != BUFFER_INVALID && _pFileSwitcherPanel)
+			_pFileSwitcherPanel->closeItem(hiddenBufferID, whichOne);
 	}
 
 	// Notify plugins that current file is closed
@@ -1645,11 +1639,20 @@ bool Notepad_plus::fileSaveAs(BufferID id, bool isSaveCopy)
 
 	FileDialog fDlg(_pPublicInterface->getHSelf(), _pPublicInterface->getHinst());
 
-    fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
-	int langTypeIndex = setFileOpenSaveDlgFilters(fDlg, false, buf->getLangType());
+	fDlg.setExtFilter(TEXT("All types"), TEXT(".*"), NULL);
+
+	LangType langType = buf->getLangType();
+
+	int langTypeIndex = 0;
+	if (!((NppParameters::getInstance()).getNppGUI()._setSaveDlgExtFiltToAllTypesForNormText && 
+		buf->isUntitled() && langType == L_TEXT))
+	{
+		langTypeIndex = setFileOpenSaveDlgFilters(fDlg, false, langType);
+	}
+	
 	fDlg.setDefFileName(buf->getFileName());
 
-    fDlg.setExtIndex(langTypeIndex + 1); // +1 for "All types"
+	fDlg.setExtIndex(langTypeIndex + 1); // +1 for "All types"
 
 	// Disable file autodetection before opening save dialog to prevent use-after-delete bug.
 	NppParameters& nppParam = NppParameters::getInstance();

@@ -71,6 +71,7 @@ PowerEditor/bin/backup/
 PowerEditor/bin/localization/
 PowerEditor/bin/plugins/
 PowerEditor/bin/updater/
+PowerEditor/bin/functionList/
 PowerEditor/bin/themes/
 PowerEditor/bin64/notepad++.exe
 PowerEditor/bin64/SciLexer.dll

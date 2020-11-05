@@ -880,7 +880,7 @@ bool FileManager::backupCurrentBuffer()
 				::SetFileAttributes(fullpath, dwFileAttribs);
 			}
 
-			FILE *fp = UnicodeConvertor.fopen(fullpath, TEXT("wb"));
+			FILE *fp = UnicodeConvertor.fopen(fullpath, TEXT("wbc"));
 			if (fp)
 			{
 				int lengthDoc = _pNotepadPlus->_pEditView->getCurrentDocLen();
@@ -969,7 +969,7 @@ bool FileManager::deleteBufferBackup(BufferID id)
 
 std::mutex save_mutex;
 
-bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, generic_string * error_msg)
+SavingStatus FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy)
 {
 	std::lock_guard<std::mutex> lock(save_mutex);
 
@@ -1005,8 +1005,13 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 
 	int encoding = buffer->getEncoding();
 
-	FILE *fp = UnicodeConvertor.fopen(fullpath, TEXT("wb"));
-	if (fp)
+	FILE *fp = UnicodeConvertor.fopen(fullpath, TEXT("wbc"));
+
+	if (!fp)
+	{
+		return SavingStatus::SaveOpenFailed;
+	}
+	else
 	{
 		_pscratchTilla->execute(SCI_SETDOCPOINTER, 0, buffer->_doc);	//generate new document
 
@@ -1049,11 +1054,7 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 		if (items_written != 1)
 		{
 			_pscratchTilla->execute(SCI_SETDOCPOINTER, 0, _scratchDocDefault);
-
-			if (error_msg != NULL)
-				*error_msg = TEXT("Failed to save file.\nNot enough space on disk to save file?");
-
-			return false;
+			return SavingStatus::SaveWrittingFailed;
 		}
 
 		if (isHiddenOrSys)
@@ -1062,19 +1063,7 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 		if (isCopy) // Save As command
 		{
 			_pscratchTilla->execute(SCI_SETDOCPOINTER, 0, _scratchDocDefault);
-
-			/* for saveAs it's not necessary since this action is for the "current" directory, so we let manage in SAVEPOINTREACHED event
-			generic_string backupFilePath = buffer->getBackupFileName();
-			if (not backupFilePath.empty())
-			{
-				// delete backup file
-				generic_string file2Delete = buffer->getBackupFileName();
-				buffer->setBackupFileName(generic_string());
-				::DeleteFile(file2Delete.c_str());
-			}
-			*/
-
-			return true;	//all done
+			return SavingStatus::SaveOK;	//all done
 		}
 
 		buffer->setFileName(fullpath, language);
@@ -1092,10 +1081,8 @@ bool FileManager::saveBuffer(BufferID id, const TCHAR * filename, bool isCopy, g
 			::DeleteFile(backupFilePath.c_str());
 		}
 
-		return true;
+		return SavingStatus::SaveOK;
 	}
-
-	return false;
 }
 
 size_t FileManager::nextUntitledNewNumber() const
@@ -1491,9 +1478,10 @@ BufferID FileManager::getBufferFromDocument(Document doc)
 
 bool FileManager::createEmptyFile(const TCHAR * path)
 {
-	FILE * file = generic_fopen(path, TEXT("wb"));
+	FILE * file = generic_fopen(path, TEXT("wbc"));
 	if (!file)
 		return false;
+	fflush(file);
 	fclose(file);
 	return true;
 }

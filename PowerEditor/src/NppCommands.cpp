@@ -37,6 +37,8 @@
 #include "functionListPanel.h"
 #include "ProjectPanel.h"
 #include "fileBrowser.h"
+#include "clipboardHistoryPanel.h"
+#include "ansiCharPanel.h"
 #include "Sorters.h"
 #include "verifySignedfile.h"
 #include "md5.h"
@@ -94,7 +96,26 @@ void Notepad_plus::command(int id)
 			cmd.run(_pPublicInterface->getHSelf(), TEXT("$(CURRENT_DIRECTORY)"));
 		}
 		break;
-		
+
+		case IDM_FILE_CONTAININGFOLDERASWORKSPACE:
+		{
+			TCHAR currentFile[CURRENTWORD_MAXLENGTH];
+			TCHAR currentDir[CURRENTWORD_MAXLENGTH];
+			::SendMessage(_pPublicInterface->getHSelf(), NPPM_GETFULLCURRENTPATH, CURRENTWORD_MAXLENGTH, reinterpret_cast<LPARAM>(currentFile));
+			::SendMessage(_pPublicInterface->getHSelf(), NPPM_GETCURRENTDIRECTORY, CURRENTWORD_MAXLENGTH, reinterpret_cast<LPARAM>(currentDir));
+	
+			if (!_pFileBrowser)
+			{
+				command(IDM_VIEW_FILEBROWSER);
+			}
+
+			vector<generic_string> folders;
+			folders.push_back(currentDir);
+			
+			launchFileBrowser(folders, currentFile);
+		}
+		break;
+
 		case IDM_FILE_OPEN_DEFAULT_VIEWER:
 		{
 			// Opens file in its default viewer. 
@@ -126,7 +147,7 @@ void Notepad_plus::command(int id)
 		case IDM_FILE_OPENFOLDERASWORSPACE:
 		{
 			generic_string folderPath = folderBrowser(_pPublicInterface->getHSelf(), TEXT("Select a folder to add in Folder as Workspace panel"));
-			if (not folderPath.empty())
+			if (!folderPath.empty())
 			{
 				if (_pFileBrowser == nullptr) // first launch, check in params to open folders
 				{
@@ -253,7 +274,7 @@ void Notepad_plus::command(int id)
 			break;
 
 		case IDM_FILE_EXIT:
-			::SendMessage(_pPublicInterface->getHSelf(), WM_CLOSE, 0, 0);
+			::PostMessage(_pPublicInterface->getHSelf(), WM_CLOSE, 0, 0);
 			break;
 
 		case IDM_EDIT_UNDO:
@@ -424,7 +445,7 @@ void Notepad_plus::command(int id)
 				fullFilePath += TEXT("\"");
 
 				if (id == IDM_EDIT_OPENINFOLDER ||
-					(id == IDM_EDIT_OPENASFILE && not ::PathIsDirectory(curentWord)))
+					(id == IDM_EDIT_OPENASFILE && !::PathIsDirectory(curentWord)))
 					::ShellExecute(hwnd, TEXT("open"), cmd2Exec, fullFilePath.c_str(), TEXT("."), SW_SHOW);
 			}
 			else // Full file path - need concatenate with current full file path
@@ -439,7 +460,7 @@ void Notepad_plus::command(int id)
 				fullFilePath += curentWord;
 
 				if ((id == IDM_EDIT_OPENASFILE &&
-					(not::PathFileExists(fullFilePath.c_str() + 1) || ::PathIsDirectory(fullFilePath.c_str() + 1))))
+					(!::PathFileExists(fullFilePath.c_str() + 1) || ::PathIsDirectory(fullFilePath.c_str() + 1))))
 				{
 					_nativeLangSpeaker.messageBox("FilePathNotFoundWarning",
 						_pPublicInterface->getHSelf(),
@@ -546,6 +567,8 @@ void Notepad_plus::command(int id)
 
 		case IDM_EDIT_SORTLINES_LEXICOGRAPHIC_ASCENDING:
 		case IDM_EDIT_SORTLINES_LEXICOGRAPHIC_DESCENDING:
+		case IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_ASCENDING:
+		case IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_DESCENDING:
 		case IDM_EDIT_SORTLINES_INTEGER_ASCENDING:
 		case IDM_EDIT_SORTLINES_INTEGER_DESCENDING:
 		case IDM_EDIT_SORTLINES_DECIMALCOMMA_ASCENDING:
@@ -606,13 +629,18 @@ void Notepad_plus::command(int id)
 			bool isDescending = id == IDM_EDIT_SORTLINES_LEXICOGRAPHIC_DESCENDING ||
 								id == IDM_EDIT_SORTLINES_INTEGER_DESCENDING ||
 								id == IDM_EDIT_SORTLINES_DECIMALCOMMA_DESCENDING ||
-								id == IDM_EDIT_SORTLINES_DECIMALDOT_DESCENDING;
+								id == IDM_EDIT_SORTLINES_DECIMALDOT_DESCENDING ||
+								id == IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_DESCENDING;
 
 			_pEditView->execute(SCI_BEGINUNDOACTION);
 			std::unique_ptr<ISorter> pSorter;
 			if (id == IDM_EDIT_SORTLINES_LEXICOGRAPHIC_DESCENDING || id == IDM_EDIT_SORTLINES_LEXICOGRAPHIC_ASCENDING)
 			{
 				pSorter = std::unique_ptr<ISorter>(new LexicographicSorter(isDescending, fromColumn, toColumn));
+			}
+			else if (id == IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_DESCENDING || id == IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_ASCENDING)
+			{
+				pSorter = std::unique_ptr<ISorter>(new LexicographicCaseInsensitiveSorter(isDescending, fromColumn, toColumn));
 			}
 			else if (id == IDM_EDIT_SORTLINES_INTEGER_DESCENDING || id == IDM_EDIT_SORTLINES_INTEGER_ASCENDING)
 			{
@@ -672,13 +700,35 @@ void Notepad_plus::command(int id)
 
 		case IDM_EDIT_CHAR_PANEL:
 		{
-			launchAnsiCharPanel();
+			if (_pAnsiCharPanel && (!_pAnsiCharPanel->isClosed()))
+			{
+				_pAnsiCharPanel->display(false);
+				_pAnsiCharPanel->setClosed(true);
+				checkMenuItem(IDM_EDIT_CHAR_PANEL, false);
+			}
+			else
+			{
+				checkMenuItem(IDM_EDIT_CHAR_PANEL, true);
+				launchAnsiCharPanel();
+				_pAnsiCharPanel->setClosed(false);
+			}
 		}
 		break;
 
 		case IDM_EDIT_CLIPBOARDHISTORY_PANEL:
 		{
-			launchClipboardHistoryPanel();
+			if (_pClipboardHistoryPanel && (!_pClipboardHistoryPanel->isClosed()))
+			{
+				_pClipboardHistoryPanel->display(false);
+				_pClipboardHistoryPanel->setClosed(true);
+				checkMenuItem(IDM_EDIT_CLIPBOARDHISTORY_PANEL, false);
+			}
+			else
+			{
+				checkMenuItem(IDM_EDIT_CLIPBOARDHISTORY_PANEL, true);
+				launchClipboardHistoryPanel();
+				_pClipboardHistoryPanel->setClosed(false);
+			}
 		}
 		break;
 
@@ -700,7 +750,7 @@ void Notepad_plus::command(int id)
 			}
 			else
 			{
-				if (not (*pp[idx])->isClosed())
+				if (!(*pp[idx])->isClosed())
 				{
 					if ((*pp[idx])->checkIfNeedSave())
 					{
@@ -769,7 +819,7 @@ void Notepad_plus::command(int id)
 
 		case IDM_VIEW_DOC_MAP:
 		{
-			if (_pDocMap && (not _pDocMap->isClosed()))
+			if (_pDocMap && (!_pDocMap->isClosed()))
 			{
 				_pDocMap->display(false);
 				_pDocMap->vzDlgDisplay(false);
@@ -1303,7 +1353,43 @@ void Notepad_plus::command(int id)
 		}
 		break;
 
-        case IDM_SEARCH_GOTOLINE :
+		case IDM_SEARCH_STYLE1TOCLIP:
+		{
+			_pEditView->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE_EXT1);
+		}
+		break;
+		case IDM_SEARCH_STYLE2TOCLIP:
+		{
+			_pEditView->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE_EXT2);
+		}
+		break;
+		case IDM_SEARCH_STYLE3TOCLIP:
+		{
+			_pEditView->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE_EXT3);
+		}
+		break;
+		case IDM_SEARCH_STYLE4TOCLIP:
+		{
+			_pEditView->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE_EXT4);
+		}
+		break;
+		case IDM_SEARCH_STYLE5TOCLIP:
+		{
+			_pEditView->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE_EXT5);
+		}
+		break;
+		case IDM_SEARCH_ALLSTYLESTOCLIP:
+		{
+			_pEditView->markedTextToClipboard(-1, true);
+		}
+		break;
+		case IDM_SEARCH_MARKEDTOCLIP:
+		{
+			_pEditView->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE);
+		}
+		break;
+
+		case IDM_SEARCH_GOTOLINE:
 		{
 			bool isFirstTime = !_goToLineDlg.isCreated();
 			_goToLineDlg.doDialog(_nativeLangSpeaker.isRTL());
@@ -1478,17 +1564,23 @@ void Notepad_plus::command(int id)
 			_pEditView->execute(SCI_LINEDUPLICATE);
 			break;
 
-		case IDM_EDIT_REMOVE_DUP_LINES:
+		case IDM_EDIT_REMOVE_CONSECUTIVE_DUP_LINES:
 			_pEditView->execute(SCI_BEGINUNDOACTION);
 			removeDuplicateLines();
 			_pEditView->execute(SCI_ENDUNDOACTION);
 			break;
 
+		case IDM_EDIT_REMOVE_ANY_DUP_LINES:
+			_pEditView->execute(SCI_BEGINUNDOACTION);
+			_pEditView->removeAnyDuplicateLines();
+			_pEditView->execute(SCI_ENDUNDOACTION);
+			break;
+
 		case IDM_EDIT_SPLIT_LINES:
 		{
-			pair<int, int> lineRange = _pEditView->getSelectionLinesRange();
-			if (lineRange.first != -1)
+			if (_pEditView->execute(SCI_GETSELECTIONS) == 1)
 			{
+				pair<int, int> lineRange = _pEditView->getSelectionLinesRange();
 				auto anchorPos = _pEditView->execute(SCI_POSITIONFROMLINE, lineRange.first);
 				auto caretPos = _pEditView->execute(SCI_GETLINEENDPOSITION, lineRange.second);
 				_pEditView->execute(SCI_SETSELECTION, caretPos, anchorPos);
@@ -2252,7 +2344,7 @@ void Notepad_plus::command(int id)
 
 			Buffer* buf = _pEditView->getCurrentBuffer();
 
-			if (not buf->isReadOnly())
+			if (!buf->isReadOnly())
 			{
 				std::lock_guard<std::mutex> lock(command_mutex);
 				buf->setEolFormat(newFormat);
@@ -2440,7 +2532,7 @@ void Notepad_plus::command(int id)
                     return;
             }
 
-            if (not buf->isDirty())
+            if (!buf->isDirty())
             {
 				buf->setEncoding(encoding);
 				buf->setUnicodeMode(uniCookie);
@@ -2914,29 +3006,6 @@ void Notepad_plus::command(int id)
 			break;
 		}
 
-		case IDM_HELP :
-		{
-			generic_string tmp((NppParameters::getInstance()).getNppPath());
-			generic_string nppHelpPath = tmp.c_str();
-
-			nppHelpPath += TEXT("\\user.manual\\documentation\\notepad-online-document.html");
-			if (::PathFileExists(nppHelpPath.c_str()))
-				::ShellExecute(NULL, TEXT("open"), nppHelpPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
-			else
-			{
-				generic_string msg = nppHelpPath;
-				generic_string warning, title;
-				if (!_nativeLangSpeaker.getMsgBoxLang("NppHelpAbsentWarning", title, warning))
-				{
-					title = TEXT("File does not exist");
-					warning = TEXT("\rdoesn't exist. Please download it on Notepad++ site.");
-				}
-				msg += warning;
-				::MessageBox(_pPublicInterface->getHSelf(), msg.c_str(), title.c_str(), MB_OK);
-			}
-		}
-		break;
-
 		case IDM_HOMESWEETHOME :
 		{
 			::ShellExecute(NULL, TEXT("open"), TEXT("https://notepad-plus-plus.org/"), NULL, NULL, SW_SHOWNORMAL);
@@ -3260,6 +3329,8 @@ void Notepad_plus::command(int id)
 		{
 			NppGUI & nppGUI = const_cast<NppGUI &>((NppParameters::getInstance()).getNppGUI());
 			::ShowWindow(_pPublicInterface->getHSelf(), nppGUI._isMaximized?SW_MAXIMIZE:SW_SHOW);
+			_dockingManager.showFloatingContainers(true);
+			restoreMinimizeDialogs();
 			fileNew();
 		}
 		break;
@@ -3268,6 +3339,8 @@ void Notepad_plus::command(int id)
 		{
 			NppGUI & nppGUI = const_cast<NppGUI &>((NppParameters::getInstance()).getNppGUI());
 			::ShowWindow(_pPublicInterface->getHSelf(), nppGUI._isMaximized?SW_MAXIMIZE:SW_SHOW);
+			_dockingManager.showFloatingContainers(true);
+			restoreMinimizeDialogs();
 
 			// Send sizing info to make window fit (specially to show tool bar. Fixed issue #2600)
 			::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
@@ -3278,6 +3351,9 @@ void Notepad_plus::command(int id)
 		{
 			NppGUI & nppGUI = const_cast<NppGUI &>((NppParameters::getInstance()).getNppGUI());
 			::ShowWindow(_pPublicInterface->getHSelf(), nppGUI._isMaximized?SW_MAXIMIZE:SW_SHOW);
+			_dockingManager.showFloatingContainers(true);
+			restoreMinimizeDialogs();
+
 			BufferID bufferID = _pEditView->getCurrentBufferID();
 			Buffer * buf = MainFileManager.getBufferByID(bufferID);
 			if (!buf->isUntitled() || buf->docLength() != 0)
@@ -3292,6 +3368,8 @@ void Notepad_plus::command(int id)
 		{
 			NppGUI & nppGUI = const_cast<NppGUI &>((NppParameters::getInstance()).getNppGUI());
 			::ShowWindow(_pPublicInterface->getHSelf(), nppGUI._isMaximized?SW_MAXIMIZE:SW_SHOW);
+			_dockingManager.showFloatingContainers(true);
+			restoreMinimizeDialogs();
 
 			// Send sizing info to make window fit (specially to show tool bar. Fixed issue #2600)
 			::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
@@ -3311,7 +3389,7 @@ void Notepad_plus::command(int id)
 		case IDM_FILE_RESTORELASTCLOSEDFILE:
 		{
 			generic_string lastOpenedFullPath = _lastRecentFileList.getFirstItem();
-			if (not lastOpenedFullPath.empty())
+			if (!lastOpenedFullPath.empty())
 			{
 				BufferID lastOpened = doOpen(lastOpenedFullPath);
 				if (lastOpened != BUFFER_INVALID)
@@ -3476,7 +3554,8 @@ void Notepad_plus::command(int id)
 			case IDM_EDIT_INS_TAB:
 			case IDM_EDIT_RMV_TAB:
 			case IDM_EDIT_DUP_LINE:
-			case IDM_EDIT_REMOVE_DUP_LINES:
+			case IDM_EDIT_REMOVE_CONSECUTIVE_DUP_LINES:
+			case IDM_EDIT_REMOVE_ANY_DUP_LINES:
 			case IDM_EDIT_TRANSPOSE_LINE:
 			case IDM_EDIT_SPLIT_LINES:
 			case IDM_EDIT_JOIN_LINES:
@@ -3514,6 +3593,8 @@ void Notepad_plus::command(int id)
 			case IDM_EDIT_BEGINENDSELECT:
 			case IDM_EDIT_SORTLINES_LEXICOGRAPHIC_ASCENDING:
 			case IDM_EDIT_SORTLINES_LEXICOGRAPHIC_DESCENDING:
+			case IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_ASCENDING:
+			case IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_DESCENDING:
 			case IDM_EDIT_SORTLINES_INTEGER_ASCENDING:
 			case IDM_EDIT_SORTLINES_INTEGER_DESCENDING:
 			case IDM_EDIT_SORTLINES_DECIMALCOMMA_ASCENDING:
@@ -3576,6 +3657,13 @@ void Notepad_plus::command(int id)
 			case IDM_SEARCH_GONEXTMARKER4   :
 			case IDM_SEARCH_GONEXTMARKER5   :
 			case IDM_SEARCH_GONEXTMARKER_DEF:
+			case IDM_SEARCH_STYLE1TOCLIP:
+			case IDM_SEARCH_STYLE2TOCLIP:
+			case IDM_SEARCH_STYLE3TOCLIP:
+			case IDM_SEARCH_STYLE4TOCLIP:
+			case IDM_SEARCH_STYLE5TOCLIP:
+			case IDM_SEARCH_ALLSTYLESTOCLIP:
+			case IDM_SEARCH_MARKEDTOCLIP:
 			case IDM_SEARCH_VOLATILE_FINDNEXT:
 			case IDM_SEARCH_VOLATILE_FINDPREV:
 			case IDM_SEARCH_CUTMARKEDLINES   :

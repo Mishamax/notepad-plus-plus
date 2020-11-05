@@ -32,6 +32,7 @@
 #include "Notepad_plus_msgs.h"
 #include "UniConversion.h"
 #include "localization.h"
+#include "Utf8.h"
 
 using namespace std;
 
@@ -218,10 +219,12 @@ void Searching::displaySectionCentered(int posStart, int posEnd, ScintillaEditVi
 	pEditView->execute(SCI_ENSUREVISIBLE, pEditView->execute(SCI_LINEFROMPOSITION, posEnd));
 
 	// Jump-scroll to center, if current position is out of view
-	pEditView->execute(SCI_SETYCARETPOLICY, CARET_JUMPS | CARET_EVEN);
+	pEditView->execute(SCI_SETVISIBLEPOLICY, CARET_JUMPS | CARET_EVEN);
+	pEditView->execute(SCI_ENSUREVISIBLEENFORCEPOLICY, pEditView->execute(SCI_LINEFROMPOSITION, isDownwards ? posEnd : posStart));
 	// When searching up, the beginning of the (possible multiline) result is important, when scrolling down the end
 	pEditView->execute(SCI_GOTOPOS, isDownwards ? posEnd : posStart);
-	pEditView->execute(SCI_SETYCARETPOLICY, CARET_EVEN);
+	pEditView->execute(SCI_SETVISIBLEPOLICY, CARET_EVEN);
+	pEditView->execute(SCI_ENSUREVISIBLEENFORCEPOLICY, pEditView->execute(SCI_LINEFROMPOSITION, isDownwards ? posEnd : posStart));
 
 	// Adjust so that we see the entire match; primarily horizontally
 	pEditView->execute(SCI_SCROLLRANGE, posStart, posEnd);
@@ -794,7 +797,7 @@ void FindReplaceDlg::resizeDialogElements(LONG newWidth)
 
 		IDD_FINDINFILES_BROWSE_BUTTON, IDCMARKALL, IDC_CLEAR_ALL, IDCCOUNTALL, IDC_FINDALL_OPENEDFILES, IDC_FINDALL_CURRENTFILE,
 		IDREPLACE, IDREPLACEALL,IDC_REPLACE_OPENEDFILES, IDD_FINDINFILES_FIND_BUTTON, IDD_FINDINFILES_REPLACEINFILES, IDOK, IDCANCEL,
-		IDC_FINDPREV, IDC_FINDNEXT, IDC_2_BUTTONS_MODE
+		IDC_FINDPREV, IDC_FINDNEXT, IDC_2_BUTTONS_MODE, IDC_COPY_MARKED_TEXT
 	};
 
 	const UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS;
@@ -900,8 +903,8 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 
 			RECT arc;
 			::GetWindowRect(::GetDlgItem(_hSelf, IDCANCEL), &arc);
-			_findInFilesClosePos.bottom = _replaceClosePos.bottom = _findClosePos.bottom = arc.bottom - arc.top;
-			_findInFilesClosePos.right = _replaceClosePos.right = _findClosePos.right = arc.right - arc.left;
+			_markClosePos.bottom = _findInFilesClosePos.bottom = _replaceClosePos.bottom = _findClosePos.bottom = arc.bottom - arc.top;
+			_markClosePos.right = _findInFilesClosePos.right = _replaceClosePos.right = _findClosePos.right = arc.right - arc.left;
 
 			POINT p;
 			p.x = arc.left;
@@ -915,6 +918,10 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 			 p = getTopPoint(::GetDlgItem(_hSelf, IDREPLACEALL), !_isRTL);
 			 _findInFilesClosePos.left = p.x;
 			 _findInFilesClosePos.top = p.y;
+
+			 p = getTopPoint(::GetDlgItem(_hSelf, IDC_REPLACE_OPENEDFILES), !_isRTL);
+			 _markClosePos.left = p.x;
+			 _markClosePos.top = p.y;
 
 			 p = getTopPoint(::GetDlgItem(_hSelf, IDCANCEL), !_isRTL);
 			 _findClosePos.left = p.x;
@@ -1453,6 +1460,13 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 					}
 				}
 				return TRUE;
+
+				case IDC_COPY_MARKED_TEXT:
+				{
+					(*_ppEditView)->markedTextToClipboard(SCE_UNIVERSAL_FOUND_STYLE);
+				}
+				return TRUE;
+
 //Option actions
 				case IDREDOTMATCHNL:
 					findHistory._dotMatchesNewline = _options._dotMatchesNewline = isCheckedOrNot(IDREDOTMATCHNL);
@@ -2147,15 +2161,15 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 				int nbChar = lend - lstart;
 
 				// use the static buffer
-				TCHAR lineBuf[1024];
+				TCHAR lineBuf[SC_SEARCHRESULT_LINEBUFFERMAXLENGTH];
 
-				if (nbChar > 1024 - 3)
-					lend = lstart + 1020;
+				if (nbChar > SC_SEARCHRESULT_LINEBUFFERMAXLENGTH - 3)
+					lend = lstart + SC_SEARCHRESULT_LINEBUFFERMAXLENGTH - 4;
 
 				int start_mark = targetStart - lstart;
 				int end_mark = targetEnd - lstart;
 
-				pEditView->getGenericText(lineBuf, 1024, lstart, lend, &start_mark, &end_mark);
+				pEditView->getGenericText(lineBuf, SC_SEARCHRESULT_LINEBUFFERMAXLENGTH, lstart, lend, &start_mark, &end_mark);
 
 				generic_string line = lineBuf;
 				line += TEXT("\r\n");
@@ -2180,15 +2194,15 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 				int nbChar = lend - lstart;
 
 				// use the static buffer
-				TCHAR lineBuf[1024];
-
-				if (nbChar > 1024 - 3)
-					lend = lstart + 1020;
+				TCHAR lineBuf[SC_SEARCHRESULT_LINEBUFFERMAXLENGTH];
+				
+				if (nbChar > SC_SEARCHRESULT_LINEBUFFERMAXLENGTH - 3)
+					lend = lstart + SC_SEARCHRESULT_LINEBUFFERMAXLENGTH - 4;
 
 				int start_mark = targetStart - lstart;
 				int end_mark = targetEnd - lstart;
 
-				pEditView->getGenericText(lineBuf, 1024, lstart, lend, &start_mark, &end_mark);
+				pEditView->getGenericText(lineBuf, SC_SEARCHRESULT_LINEBUFFERMAXLENGTH, lstart, lend, &start_mark, &end_mark);
 
 				generic_string line = lineBuf;
 				line += TEXT("\r\n");
@@ -2669,6 +2683,7 @@ void FindReplaceDlg::enableMarkAllControls(bool isEnable)
 	showFindDlgItem(IDC_PURGE_CHECK, isEnable);
 	showFindDlgItem(IDC_CLEAR_ALL, isEnable);
 	showFindDlgItem(IDC_IN_SELECTION_CHECK, isEnable);
+	showFindDlgItem(IDC_COPY_MARKED_TEXT, isEnable);
 }
 
 void FindReplaceDlg::enableFindInFilesControls(bool isEnable)
@@ -2701,7 +2716,8 @@ void FindReplaceDlg::enableFindInFilesControls(bool isEnable)
 	showFindDlgItem(IDC_IN_SELECTION_CHECK, !isEnable);
 	showFindDlgItem(IDC_CLEAR_ALL, !isEnable);
 	showFindDlgItem(IDCMARKALL, !isEnable);
-	
+	showFindDlgItem(IDC_COPY_MARKED_TEXT, !isEnable);
+
 	showFindDlgItem(IDREPLACE, !isEnable);
 	showFindDlgItem(IDC_REPLACEINSELECTION, !isEnable);
 	showFindDlgItem(IDREPLACEALL, !isEnable);
@@ -3191,12 +3207,14 @@ void FindReplaceDlg::doDialog(DIALOG_TYPE whichType, bool isRTL, bool toShow)
 
 LRESULT FAR PASCAL FindReplaceDlg::finderProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (message == WM_KEYDOWN && (wParam == VK_DELETE || wParam == VK_RETURN))
+	if (message == WM_KEYDOWN && (wParam == VK_DELETE || wParam == VK_RETURN || wParam == VK_ESCAPE))
 	{
 		ScintillaEditView *pScint = (ScintillaEditView *)(::GetWindowLongPtr(hwnd, GWLP_USERDATA));
 		Finder *pFinder = (Finder *)(::GetWindowLongPtr(pScint->getHParent(), GWLP_USERDATA));
 		if (wParam == VK_RETURN)
 			pFinder->gotoFoundLine();
+		else if (wParam == VK_ESCAPE)
+			::SendMessage(::GetParent(pFinder->getHParent()), NPPM_DMMHIDE, 0, reinterpret_cast<LPARAM>(pFinder->getHSelf()));
 		else // VK_DELETE
 			pFinder->deleteResult();
 		return 0;
@@ -3256,6 +3274,7 @@ void FindReplaceDlg::enableMarkFunc()
 	::MoveWindow(::GetDlgItem(_hSelf, IDCANCEL), _findInFilesClosePos.left + _deltaWidth, _findInFilesClosePos.top, _findInFilesClosePos.right, _findInFilesClosePos.bottom, TRUE);
 	::MoveWindow(::GetDlgItem(_hSelf, IDC_IN_SELECTION_CHECK), _replaceInSelCheckPos.left + _deltaWidth, _replaceInSelCheckPos.top, _replaceInSelCheckPos.right, _replaceInSelCheckPos.bottom, TRUE);
 	::MoveWindow(::GetDlgItem(_hSelf, IDC_REPLACEINSELECTION), _replaceInSelFramePos.left + _deltaWidth, _replaceInSelFramePos.top, _replaceInSelFramePos.right, _replaceInSelFramePos.bottom, TRUE);
+	::MoveWindow(::GetDlgItem(_hSelf, IDCANCEL), _markClosePos.left + _deltaWidth, _markClosePos.top, _markClosePos.right, _markClosePos.bottom, TRUE);
 
 	TCHAR label[MAX_PATH];
 	_tab.getCurrentTitle(label, MAX_PATH);
@@ -3521,14 +3540,25 @@ void Finder::add(FoundInfo fi, SearchResultMarking mi, const TCHAR* foundline)
 	mi._end += static_cast<int32_t>(str.length());
 	str += foundline;
 
-	if (str.length() >= SC_SEARCHRESULT_LINEBUFFERMAXLENGTH)
+	WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+	const char *text2AddUtf8 = wmc.wchar2char(str.c_str(), SC_CP_UTF8, &mi._start, &mi._end); // certainly utf8 here
+	size_t len = strlen(text2AddUtf8);
+
+	if (len >= SC_SEARCHRESULT_LINEBUFFERMAXLENGTH)
 	{
-		const TCHAR * endOfLongLine = TEXT("...\r\n");
-		str = str.substr(0, SC_SEARCHRESULT_LINEBUFFERMAXLENGTH - lstrlen(endOfLongLine) - 1);
-		str += endOfLongLine;
+		const char * endOfLongLine = " ...\r\n"; // perfectly Utf8-encoded already
+		size_t lenEndOfLongLine = strlen(endOfLongLine);
+		size_t cut = SC_SEARCHRESULT_LINEBUFFERMAXLENGTH - lenEndOfLongLine - 1;
+
+		while ((cut > 0) && (!Utf8::isValid(& text2AddUtf8 [cut], (int)(len - cut))))
+			cut--;
+
+		memcpy ((void*) & text2AddUtf8 [cut], endOfLongLine, lenEndOfLongLine + 1);
+		len = cut + lenEndOfLongLine;
 	}
+
 	setFinderReadOnly(false);
-	_scintView.addGenericText(str.c_str(), &mi._start, &mi._end);
+	_scintView.execute(SCI_ADDTEXT, len, reinterpret_cast<LPARAM>(text2AddUtf8));
 	setFinderReadOnly(true);
 	_pMainMarkings->push_back(mi);
 }
@@ -3595,26 +3625,23 @@ generic_string & Finder::prepareStringForClipboard(generic_string & s) const
 
 void Finder::copy()
 {
+	if (_scintView.execute(SCI_GETSELECTIONS) > 1) // multi-selection
+	{
+		// don't do anything if user has made a column/rectangular selection
+		return;
+	}
+
 	size_t fromLine, toLine;
 	{
-		const auto selStart = _scintView.execute(SCI_GETSELECTIONSTART);
-		const auto selEnd = _scintView.execute(SCI_GETSELECTIONEND);
-		const bool hasSelection = selStart != selEnd;
 		const pair<int, int> lineRange = _scintView.getSelectionLinesRange();
-		if (hasSelection && lineRange.first != lineRange.second)
-		{
-			fromLine = lineRange.first;
-			toLine = lineRange.second;
-		}
-		else
-		{
-			// Abuse fold levels to find out which lines to copy to clipboard.
-			// We get the current line and then the next line which has a smaller fold level (SCI_GETLASTCHILD).
-			// Then we loop all lines between them and determine which actually contain search results.
-			fromLine = _scintView.getCurrentLineNumber();
-			const int selectedLineFoldLevel = _scintView.execute(SCI_GETFOLDLEVEL, fromLine) & SC_FOLDLEVELNUMBERMASK;
-			toLine = _scintView.execute(SCI_GETLASTCHILD, fromLine, selectedLineFoldLevel);
-		}
+		fromLine = lineRange.first;
+		toLine = lineRange.second;
+
+		// Abuse fold levels to find out which lines to copy to clipboard.
+		// We get the current line and then the next line which has a smaller fold level (SCI_GETLASTCHILD).
+		// Then we loop all lines between them and determine which actually contain search results.
+		const int selectedLineFoldLevel = _scintView.execute(SCI_GETFOLDLEVEL, fromLine) & SC_FOLDLEVELNUMBERMASK;
+		toLine = _scintView.execute(SCI_GETLASTCHILD, toLine, selectedLineFoldLevel);
 	}
 
 	std::vector<generic_string> lines;
@@ -3631,7 +3658,7 @@ void Finder::copy()
 			}
 		}
 	}
-	const generic_string toClipboard = stringJoin(lines, TEXT("\r\n"));
+	const generic_string toClipboard = stringJoin(lines, TEXT("\r\n")) + TEXT("\r\n");
 	if (!toClipboard.empty())
 	{
 		if (!str2Clipboard(toClipboard, _hSelf))
@@ -3821,8 +3848,8 @@ INT_PTR CALLBACK Finder::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 				NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 
-				generic_string findInFinder = pNativeSpeaker->getLocalizedStrFromID("finder-find-in-finder", TEXT("Find in these found results..."));
-				generic_string closeThis = pNativeSpeaker->getLocalizedStrFromID("finder-close-this", TEXT("Close this finder"));
+				generic_string findInFinder = pNativeSpeaker->getLocalizedStrFromID("finder-find-in-finder", TEXT("Find in these search results..."));
+				generic_string closeThis = pNativeSpeaker->getLocalizedStrFromID("finder-close-this", TEXT("Close these search results"));
 				generic_string collapseAll = pNativeSpeaker->getLocalizedStrFromID("finder-collapse-all", TEXT("Collapse all"));
 				generic_string uncollapseAll = pNativeSpeaker->getLocalizedStrFromID("finder-uncollapse-all", TEXT("Uncollapse all"));
 				generic_string copy = pNativeSpeaker->getLocalizedStrFromID("finder-copy", TEXT("Copy"));

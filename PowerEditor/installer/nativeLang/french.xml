@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <NotepadPlus>
-    <Native-Langue name="Français" filename="french.xml" version="7.9">
+    <Native-Langue name="Français" filename="french.xml" version="7.9.1">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -80,6 +80,7 @@
                     <Item id="41002" name="&amp;Ouvrir..."/>
                     <Item id="41019" name="Explorateur Windows"/>
                     <Item id="41020" name="Invite de commande (cmd)"/>
+                    <Item id="41025" name="Dossier en tant qu'espace de travail"/>
                     <Item id="41003" name="Fermer"/>
                     <Item id="41004" name="Fermer tout"/>
                     <Item id="41005" name="Fermer tout sauf le document actuel"/>
@@ -111,7 +112,8 @@
                     <Item id="42008" name="Augmenter l’indentation"/>
                     <Item id="42009" name="Réduire l’indentation"/>
                     <Item id="42010" name="Dupliquer la ligne actuelle"/>
-                    <Item id="42077" name="Supprimer la ligne en double consécutives"/>
+                    <Item id="42079" name="Supprimer les lignes en double"/>
+                    <Item id="42077" name="Supprimer les lignes en double consécutives"/>
                     <Item id="42012" name="Séparer en plusieurs lignes"/>
                     <Item id="42013" name="Joindre plusieurs lignes"/>
                     <Item id="42014" name="Déplacer la ligne actuelle vers le haut"/>
@@ -352,6 +354,7 @@
                     <Item CMID="20" name="Ouvrir le répertoire du fichier en cours dans l'invite de commande"/>
                     <Item CMID="21" name="Ouvrir dans l'application par défaut"/>
                     <Item CMID="22" name="Fermer tous les documents non-modifiés"/>
+                    <Item CMID="23" name="Ouvrir le répertoire du fichier en cours en tant qu'espace de travail"/>
             </TabBar>
         </Menu>
         <Dialog>
@@ -1075,7 +1078,6 @@ Vous pouvez définir plusieurs marqueurs de colonne en utilisant un espace pour 
             <SettingsOnCloudError title="Les paramètres dans le cloud" message="Il semble que les paramètres dans le cloud se trouve sur un lecteur en lecture seule,
 ou à un dossier restreint. Votre paramètres dans le cloud seront annulés.
 Veuillez réinitialiser une valeur cohérente au dialogue Préférences."/>
-            <NppHelpAbsentWarning title="Le fichier n'existe pas" message=" n'existe pas. Veuillez le télécharger sur le site de Notepad++."/>
             <SaveCurrentModifWarning title="Sauvegarder la modification en cours" message="Vous devez enregistrer la modification en cours. Toutes les modifications enregistrées ne peuvent pas être annulées. Continuer ?"/>
             <FilePathNotFoundWarning title="Ouvrir" message="Le fichier que vous essayez d'ouvrir n'existe pas."/>
             <SessionFileInvalidError title="Impossible de charger la session" message="Le fichier de session est endommagé ou non valide."/>

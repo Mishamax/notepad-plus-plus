@@ -391,6 +391,7 @@ INT_PTR CALLBACK BarsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_VERTICAL, BM_SETCHECK, tabBarStatus & TAB_VERTICAL, 0);
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_MULTILINE, BM_SETCHECK, tabBarStatus & TAB_MULTILINE, 0);
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_LAST_EXIT, BM_SETCHECK, tabBarStatus & TAB_QUITONEMPTY, 0);
+			::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_ALTICONS, BM_SETCHECK, tabBarStatus & TAB_ALTICONS, 0);
 			
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_HIDE, BM_SETCHECK, tabBarStatus & TAB_HIDE, 0);
 			::SendMessage(_hSelf, WM_COMMAND, IDC_CHECK_TAB_HIDE, 0);
@@ -470,6 +471,7 @@ INT_PTR CALLBACK BarsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 					::EnableWindow(::GetDlgItem(_hSelf, IDC_CHECK_ENABLETABCLOSE), !toBeHidden);
 					::EnableWindow(::GetDlgItem(_hSelf, IDC_CHECK_DBCLICK2CLOSE), !toBeHidden);
 					::EnableWindow(::GetDlgItem(_hSelf, IDC_CHECK_TAB_LAST_EXIT), !toBeHidden);
+					::EnableWindow(::GetDlgItem(_hSelf, IDC_CHECK_TAB_ALTICONS), !toBeHidden);
 
 					::SendMessage(::GetParent(_hParent), NPPM_HIDETABBAR, 0, toBeHidden);
 					return TRUE;
@@ -490,6 +492,14 @@ INT_PTR CALLBACK BarsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 				}
 				return TRUE;
 
+				case IDC_CHECK_TAB_ALTICONS:
+				{
+					NppGUI& nppGUI = const_cast<NppGUI&>(nppParam.getNppGUI());
+					nppGUI._tabStatus ^= TAB_ALTICONS;
+					bool isChecked = (BST_CHECKED == ::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_ALTICONS, BM_GETCHECK, 0, 0));
+					::SendMessage(::GetParent(_hParent), NPPM_INTERNAL_CHANGETABBAEICONS, 0, isChecked ? 1 : 0);
+					return TRUE;
+				}
 
 				case IDC_CHECK_REDUCE :
 					::SendMessage(_hParent, WM_COMMAND, IDM_VIEW_REDUCETABBAR, 0);
@@ -912,7 +922,8 @@ INT_PTR CALLBACK SettingsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_MIN2SYSTRAY, BM_SETCHECK, nppGUI._isMinimizedToTray, 0);
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_DETECTENCODING, BM_SETCHECK, nppGUI._detectEncoding, 0);
-            ::SendDlgItemMessage(_hSelf, IDC_CHECK_AUTOUPDATE, BM_SETCHECK, nppGUI._autoUpdateOpt._doAutoUpdate, 0);
+			::SendDlgItemMessage(_hSelf, IDC_CHECK_AUTOUPDATE, BM_SETCHECK, nppGUI._autoUpdateOpt._doAutoUpdate, 0);
+			::SendDlgItemMessage(_hSelf, IDC_CHECK_SAVEDLGEXTFILTALLTYPESFORNORMTEXT, BM_SETCHECK, nppGUI._setSaveDlgExtFiltToAllTypesForNormText, 0);
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_DIRECTWRITE_ENABLE, BM_SETCHECK, nppGUI._writeTechnologyEngine == directWriteTechnology, 0);
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_ENABLEDOCPEEKER, BM_SETCHECK, nppGUI._isDocPeekOnTab ? BST_CHECKED : BST_UNCHECKED, 0);
 			::SendDlgItemMessage(_hSelf, IDC_CHECK_ENABLEDOCPEEKONMAP, BM_SETCHECK, nppGUI._isDocPeekOnMap ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -1028,6 +1039,10 @@ INT_PTR CALLBACK SettingsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM)
 
 				case IDC_CHECK_AUTOUPDATE:
 					nppGUI._autoUpdateOpt._doAutoUpdate = isCheckedOrNot(static_cast<int32_t>(wParam));
+					return TRUE;
+
+				case IDC_CHECK_SAVEDLGEXTFILTALLTYPESFORNORMTEXT:
+					nppGUI._setSaveDlgExtFiltToAllTypesForNormText = isCheckedOrNot(static_cast<int32_t>(wParam));
 					return TRUE;
 
 				case IDC_CHECK_MIN2SYSTRAY:

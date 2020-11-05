@@ -525,9 +525,6 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				_pDocMap->reloadMap();
 			}
 
-			addHotSpot(_pEditView);
-			addHotSpot(_pNonEditView);
-
 			result = TRUE;
 			break;
 		}
@@ -645,6 +642,13 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				MainFileManager.backupCurrentBuffer();
 			}
 
+			return TRUE;
+		}
+
+		case NPPM_INTERNAL_CHANGETABBAEICONS:
+		{
+			_mainDocTab.changeIcons(static_cast<unsigned char>(lParam));
+			_subDocTab.changeIcons(static_cast<unsigned char>(lParam));
 			return TRUE;
 		}
 
@@ -1645,11 +1649,14 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case WM_ACTIVATE:
 		{
-			_pEditView->getFocus();
-			auto x = _pEditView->execute(SCI_GETXOFFSET);
-			_pEditView->execute(SCI_SETXOFFSET, x);
-			x = _pNonEditView->execute(SCI_GETXOFFSET);
-			_pNonEditView->execute(SCI_SETXOFFSET, x);
+			if (wParam != WA_INACTIVE)
+			{
+				_pEditView->getFocus();
+				auto x = _pEditView->execute(SCI_GETXOFFSET);
+				_pEditView->execute(SCI_SETXOFFSET, x);
+				x = _pNonEditView->execute(SCI_GETXOFFSET);
+				_pNonEditView->execute(SCI_SETXOFFSET, x);
+			}
 			return TRUE;
 		}
 
@@ -1740,6 +1747,12 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			scnN.nmhdr.hwndFrom = hwnd;
 			scnN.nmhdr.idFrom = (uptr_t) _pEditView->getCurrentBufferID();
 			_pluginsManager.notify(&scnN);
+			return TRUE;
+		}
+
+		case WM_UPDATEMAINMENUBITMAPS:
+		{
+			setupColorSampleBitmapsOnMainMenuItems();
 			return TRUE;
 		}
 
@@ -1899,12 +1912,14 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		case WM_SYSCOMMAND:
 		{
 			const NppGUI & nppgui = (nppParam.getNppGUI());
-			if (((nppgui._isMinimizedToTray && !_isAdministrator) || _pPublicInterface->isPrelaunch()) && (wParam == SC_MINIMIZE))
+			if ((nppgui._isMinimizedToTray || _pPublicInterface->isPrelaunch()) && (wParam == SC_MINIMIZE))
 			{
 				if (nullptr == _pTrayIco)
-					_pTrayIco = new trayIconControler(hwnd, IDI_M30ICON, IDC_MINIMIZED_TRAY, ::LoadIcon(_pPublicInterface->getHinst(), MAKEINTRESOURCE(IDI_M30ICON)), TEXT(""));
+					_pTrayIco = new trayIconControler(hwnd, IDI_M30ICON, NPPM_INTERNAL_MINIMIZED_TRAY, ::LoadIcon(_pPublicInterface->getHinst(), MAKEINTRESOURCE(IDI_M30ICON)), TEXT(""));
 
 				_pTrayIco->doTrayIcon(ADD);
+				_dockingManager.showFloatingContainers(false);
+				minimizeDialogs();
 				::ShowWindow(hwnd, SW_HIDE);
 				return TRUE;
 			}
@@ -1927,7 +1942,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			return TRUE;
 		}
 
-		case IDC_MINIMIZED_TRAY:
+		case NPPM_INTERNAL_MINIMIZED_TRAY:
 		{
 			switch (lParam)
 			{
@@ -1936,6 +1951,9 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				{
 					_pEditView->getFocus();
 					::ShowWindow(hwnd, SW_SHOW);
+					_dockingManager.showFloatingContainers(true);
+					restoreMinimizeDialogs();
+
 					if (!_pPublicInterface->isPrelaunch())
 						_pTrayIco->doTrayIcon(REMOVE);
 					::SendMessage(hwnd, WM_SIZE, 0, 0);
@@ -2461,8 +2479,16 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case NPPM_INTERNAL_UPDATECLICKABLELINKS:
 		{
-			addHotSpot(_pEditView);
-			addHotSpot(_pNonEditView);
+			ScintillaEditView* pView = reinterpret_cast<ScintillaEditView*>(wParam);
+			if (pView == NULL)
+			{
+				addHotSpot(_pEditView);
+				addHotSpot(_pNonEditView);
+			}
+			else
+			{
+				addHotSpot(pView);
+			}
 		}
 
 		default:

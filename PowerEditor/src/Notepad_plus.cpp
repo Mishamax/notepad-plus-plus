@@ -27,6 +27,7 @@
 
 #include <time.h>
 #include <shlwapi.h>
+#include <wininet.h>
 #include "Notepad_plus.h"
 #include "Notepad_plus_Window.h"
 #include "FileDialog.h"
@@ -52,11 +53,13 @@
 
 using namespace std;
 
-enum tb_stat {tb_saved, tb_unsaved, tb_ro};
+enum tb_stat {tb_saved, tb_unsaved, tb_ro, tb_monitored};
 #define DIR_LEFT true
 #define DIR_RIGHT false
 
-int docTabIconIDs[] = {IDI_SAVED_ICON, IDI_UNSAVED_ICON, IDI_READONLY_ICON, IDI_MONITORING_ICON};
+int docTabIconIDs[] = { IDI_SAVED_ICON,  IDI_UNSAVED_ICON,  IDI_READONLY_ICON,  IDI_MONITORING_ICON };
+int docTabIconIDs_alt[] = { IDI_SAVED_ALT_ICON, IDI_UNSAVED_ALT_ICON, IDI_READONLY_ALT_ICON, IDI_MONITORING_ICON };
+
 
 ToolBarButtonUnit toolBarIcons[] = {
 	{IDM_FILE_NEW,		IDI_NEW_OFF_ICON,		IDI_NEW_ON_ICON,		IDI_NEW_OFF_ICON, IDR_FILENEW},
@@ -230,12 +233,18 @@ LRESULT Notepad_plus::init(HWND hwnd)
     const ScintillaViewParams & svp1 = nppParam.getSVP();
 
 	int tabBarStatus = nppGUI._tabStatus;
+	
 	_toReduceTabBar = ((tabBarStatus & TAB_REDUCE) != 0);
-	int iconDpiDynamicalSize = nppParam._dpiManager.scaleY(_toReduceTabBar?13:20);
-	_docTabIconList.create(iconDpiDynamicalSize, _pPublicInterface->getHinst(), docTabIconIDs, sizeof(docTabIconIDs)/sizeof(int));
+	int iconDpiDynamicalSize = nppParam._dpiManager.scaleY(_toReduceTabBar ? 13 : 20);
+	_docTabIconList.create(iconDpiDynamicalSize, _pPublicInterface->getHinst(), docTabIconIDs, sizeof(docTabIconIDs) / sizeof(int));
+	_docTabIconListAlt.create(iconDpiDynamicalSize, _pPublicInterface->getHinst(), docTabIconIDs_alt, sizeof(docTabIconIDs_alt) / sizeof(int));
 
-	_mainDocTab.init(_pPublicInterface->getHinst(), hwnd, &_mainEditView, &_docTabIconList);
-	_subDocTab.init(_pPublicInterface->getHinst(), hwnd, &_subEditView, &_docTabIconList);
+	vector<IconList *> pIconListVector;
+	pIconListVector.push_back(&_docTabIconList);
+	pIconListVector.push_back(&_docTabIconListAlt);
+
+	_mainDocTab.init(_pPublicInterface->getHinst(), hwnd, &_mainEditView, pIconListVector, (tabBarStatus & TAB_ALTICONS) ? 1 : 0);
+	_subDocTab.init(_pPublicInterface->getHinst(), hwnd, &_subEditView, pIconListVector, (tabBarStatus & TAB_ALTICONS) ? 1 : 0);
 
 	_mainEditView.display();
 
@@ -367,7 +376,7 @@ LRESULT Notepad_plus::init(HWND hwnd)
     //--Status Bar Section--//
 	bool willBeShown = nppGUI._statusBarShow;
     _statusBar.init(_pPublicInterface->getHinst(), hwnd, 6);
-	_statusBar.setPartWidth(STATUSBAR_DOC_SIZE, nppParam._dpiManager.scaleX(200));
+	_statusBar.setPartWidth(STATUSBAR_DOC_SIZE, nppParam._dpiManager.scaleX(220));
 	_statusBar.setPartWidth(STATUSBAR_CUR_POS, nppParam._dpiManager.scaleX(260));
 	_statusBar.setPartWidth(STATUSBAR_EOF_FORMAT, nppParam._dpiManager.scaleX(110));
 	_statusBar.setPartWidth(STATUSBAR_UNICODE_TYPE, nppParam._dpiManager.scaleX(120));
@@ -381,7 +390,7 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	if (nppGUI._isMinimizedToTray && _pTrayIco == NULL)
 	{
 		HICON icon = ::LoadIcon(_pPublicInterface->getHinst(), MAKEINTRESOURCE(IDI_M30ICON));
-		_pTrayIco = new trayIconControler(hwnd, IDI_M30ICON, IDC_MINIMIZED_TRAY, icon, TEXT(""));
+		_pTrayIco = new trayIconControler(hwnd, IDI_M30ICON, NPPM_INTERNAL_MINIMIZED_TRAY, icon, TEXT(""));
 	}
 
 	checkSyncState();
@@ -401,6 +410,8 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	// ------------ //
 	// Menu Section //
 	// ------------ //
+
+	setupColorSampleBitmapsOnMainMenuItems();
 
 	// Macro Menu
 	std::vector<MacroShortcut> & macros  = nppParam.getMacroList();
@@ -753,7 +764,8 @@ bool Notepad_plus::saveGUIParams()
 						(TabBarPlus::isVertical() ? TAB_VERTICAL:0) | \
 						(TabBarPlus::isMultiLine() ? TAB_MULTILINE:0) |\
 						(nppGUI._tabStatus & TAB_HIDE) | \
-						(nppGUI._tabStatus & TAB_QUITONEMPTY);
+						(nppGUI._tabStatus & TAB_QUITONEMPTY) | \
+						(nppGUI._tabStatus & TAB_ALTICONS);
 	nppGUI._splitterPos = _subSplitter.isVertical()?POS_VERTICAL:POS_HORIZOTAL;
 	UserDefineDialog *udd = _pEditView->getUserDefineDlg();
 	bool b = udd->isDocked();
@@ -1058,6 +1070,16 @@ int Notepad_plus::getHtmlXmlEncoding(const TCHAR *fileName) const
 	}
 }
 
+void Notepad_plus::setCodePageForInvisibleView(Buffer const *pBuffer)
+{
+	int detectedCp = static_cast<int>(_invisibleEditView.execute(SCI_GETCODEPAGE));
+	int cp2set = SC_CP_UTF8;
+	if (pBuffer->getUnicodeMode() == uni8Bit)
+	{
+		cp2set = (detectedCp == SC_CP_UTF8 ? CP_ACP : detectedCp);
+	}
+	_invisibleEditView.execute(SCI_SETCODEPAGE, cp2set);
+}
 
 bool Notepad_plus::replaceInOpenedFiles()
 {
@@ -1080,27 +1102,31 @@ bool Notepad_plus::replaceInOpenedFiles()
 			if (pBuf->isReadOnly())
 				continue;
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			UINT cp = static_cast<UINT>(_invisibleEditView.execute(SCI_GETCODEPAGE));
-			_invisibleEditView.execute(SCI_SETCODEPAGE, pBuf->getUnicodeMode() == uni8Bit ? cp : SC_CP_UTF8);
+
+			setCodePageForInvisibleView(pBuf);
+
 			_invisibleEditView.setCurrentBuffer(pBuf);
-		    _invisibleEditView.execute(SCI_BEGINUNDOACTION);
+
+			_invisibleEditView.execute(SCI_BEGINUNDOACTION);
 			nbTotal += _findReplaceDlg.processAll(ProcessReplaceAll, FindReplaceDlg::_env, isEntireDoc);
 			_invisibleEditView.execute(SCI_ENDUNDOACTION);
 		}
 	}
 
 	if (_mainWindowStatus & WindowSubActive)
-    {
+	{
 		for (size_t i = 0, len = _subDocTab.nbItem(); i < len; ++i)
-	    {
+		{
 			pBuf = MainFileManager.getBufferByID(_subDocTab.getBufferByIndex(i));
 			if (pBuf->isReadOnly())
 				continue;
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			UINT cp = static_cast<UINT>(_invisibleEditView.execute(SCI_GETCODEPAGE));
-			_invisibleEditView.execute(SCI_SETCODEPAGE, pBuf->getUnicodeMode() == uni8Bit ? cp : SC_CP_UTF8);
+
+			setCodePageForInvisibleView(pBuf);
+
 			_invisibleEditView.setCurrentBuffer(pBuf);
-		    _invisibleEditView.execute(SCI_BEGINUNDOACTION);
+
+			_invisibleEditView.execute(SCI_BEGINUNDOACTION);
 			nbTotal += _findReplaceDlg.processAll(ProcessReplaceAll, FindReplaceDlg::_env, isEntireDoc);
 			_invisibleEditView.execute(SCI_ENDUNDOACTION);
 		}
@@ -1559,13 +1585,8 @@ bool Notepad_plus::replaceInFiles()
 		{
 			Buffer * pBuf = MainFileManager.getBufferByID(id);
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			int detectedCp = static_cast<int>(_invisibleEditView.execute(SCI_GETCODEPAGE));
-			int cp2set = SC_CP_UTF8;
-			if (pBuf->getUnicodeMode() == uni8Bit)
-			{
-				cp2set = (detectedCp == SC_CP_UTF8 ? CP_ACP : detectedCp);
-			}
-			_invisibleEditView.execute(SCI_SETCODEPAGE, cp2set);
+
+			setCodePageForInvisibleView(pBuf);
 
 			_invisibleEditView.setCurrentBuffer(pBuf);
 
@@ -1653,16 +1674,13 @@ bool Notepad_plus::findInFinderFiles(FindersInfo *findInFolderInfo)
 		{
 			Buffer * pBuf = MainFileManager.getBufferByID(id);
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			int detectedCp = static_cast<int>(_invisibleEditView.execute(SCI_GETCODEPAGE));
-			int cp2set = SC_CP_UTF8;
-			if (pBuf->getUnicodeMode() == uni8Bit)
-			{
-				cp2set = (detectedCp == SC_CP_UTF8 ? CP_ACP : detectedCp);
-			}
-			_invisibleEditView.execute(SCI_SETCODEPAGE, cp2set);
+
+			setCodePageForInvisibleView(pBuf);
 
 			findInFolderInfo->_pFileName = fileNames.at(i).c_str();
+			
 			nbTotal += _findReplaceDlg.processAll(ProcessFindInFinder, &(findInFolderInfo->_findOption), true, findInFolderInfo);
+			
 			if (closeBuf)
 				MainFileManager.closeBuffer(id, _pEditView);
 		}
@@ -1750,17 +1768,14 @@ bool Notepad_plus::findInFiles()
 		{
 			Buffer * pBuf = MainFileManager.getBufferByID(id);
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			int detectedCp = static_cast<int>(_invisibleEditView.execute(SCI_GETCODEPAGE));
-			int cp2set = SC_CP_UTF8;
-			if (pBuf->getUnicodeMode() == uni8Bit)
-			{
-				cp2set = (detectedCp == SC_CP_UTF8 ? CP_ACP : detectedCp);
-			}
 
-			_invisibleEditView.execute(SCI_SETCODEPAGE, cp2set);
+			setCodePageForInvisibleView(pBuf);
+
 			FindersInfo findersInfo;
 			findersInfo._pFileName = fileNames.at(i).c_str();
+
 			nbTotal += _findReplaceDlg.processAll(ProcessFindAll, FindReplaceDlg::_env, isEntireDoc, &findersInfo);
+
 			if (closeBuf)
 				MainFileManager.closeBuffer(id, _pEditView);
 		}
@@ -1811,40 +1826,45 @@ bool Notepad_plus::findInOpenedFiles()
 
 	_findReplaceDlg.beginNewFilesSearch();
 
-    if (_mainWindowStatus & WindowMainActive)
-    {
+	if (_mainWindowStatus & WindowMainActive)
+	{
 		for (size_t i = 0, len = _mainDocTab.nbItem(); i < len ; ++i)
-	    {
+		{
 			pBuf = MainFileManager.getBufferByID(_mainDocTab.getBufferByIndex(i));
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			auto cp = _invisibleEditView.execute(SCI_GETCODEPAGE);
-			_invisibleEditView.execute(SCI_SETCODEPAGE, pBuf->getUnicodeMode() == uni8Bit ? cp : SC_CP_UTF8);
+
+			setCodePageForInvisibleView(pBuf);
+
 			FindersInfo findersInfo;
 			findersInfo._pFileName = pBuf->getFullPathName();
+			
 			nbTotal += _findReplaceDlg.processAll(ProcessFindAll, FindReplaceDlg::_env, isEntireDoc, &findersInfo);
-	    }
-    }
+		}
+	}
 
 	size_t nbUniqueBuffers = _mainDocTab.nbItem();
 
 	if (_mainWindowStatus & WindowSubActive)
-    {
+	{
 		for (size_t i = 0, len2 = _subDocTab.nbItem(); i < len2 ; ++i)
-	    {
+		{
 			pBuf = MainFileManager.getBufferByID(_subDocTab.getBufferByIndex(i));
 			if (_mainDocTab.getIndexByBuffer(pBuf) != -1)
 			{
 				continue;  // clone was already searched in main; skip re-searching in sub
 			}
 			_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-			auto cp = _invisibleEditView.execute(SCI_GETCODEPAGE);
-			_invisibleEditView.execute(SCI_SETCODEPAGE, pBuf->getUnicodeMode() == uni8Bit ? cp : SC_CP_UTF8);
+
+			setCodePageForInvisibleView(pBuf);
+
 			FindersInfo findersInfo;
 			findersInfo._pFileName = pBuf->getFullPathName();
+
 			nbTotal += _findReplaceDlg.processAll(ProcessFindAll, FindReplaceDlg::_env, isEntireDoc, &findersInfo);
+
 			++nbUniqueBuffers;
-	    }
-    }
+		}
+	}
 
 	_findReplaceDlg.finishFilesSearch(nbTotal, int(nbUniqueBuffers), isEntireDoc);
 
@@ -1881,8 +1901,8 @@ bool Notepad_plus::findInCurrentFile(bool isEntireDoc)
 	_findReplaceDlg.beginNewFilesSearch();
 
 	_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, pBuf->getDocument());
-	UINT cp = static_cast<UINT>(_invisibleEditView.execute(SCI_GETCODEPAGE));
-	_invisibleEditView.execute(SCI_SETCODEPAGE, pBuf->getUnicodeMode() == uni8Bit ? cp : SC_CP_UTF8);
+
+	setCodePageForInvisibleView(pBuf);
 
 	if (!isEntireDoc)
 	{
@@ -2137,6 +2157,68 @@ void Notepad_plus::checkSyncState()
 	}
 	enableCommand(IDM_VIEW_SYNSCROLLV, canDoSync, MENU | TOOLBAR);
 	enableCommand(IDM_VIEW_SYNSCROLLH, canDoSync, MENU | TOOLBAR);
+}
+
+void Notepad_plus::setupColorSampleBitmapsOnMainMenuItems()
+{
+	// set up bitmaps on menu items
+	// style-related bitmaps of color samples
+
+	struct
+	{
+		int firstOfThisColorMenuId;
+		int styleIndic;
+		std::vector<int> sameColorMenuIds;
+	}
+	bitmapOnStyleMenuItemsInfo[] =
+	{
+		{ IDM_SEARCH_GONEXTMARKER5, SCE_UNIVERSAL_FOUND_STYLE_EXT5, { IDM_SEARCH_MARKALLEXT5, IDM_SEARCH_UNMARKALLEXT5, IDM_SEARCH_GOPREVMARKER5, IDM_SEARCH_STYLE5TOCLIP } },
+		{ IDM_SEARCH_GONEXTMARKER4, SCE_UNIVERSAL_FOUND_STYLE_EXT4, { IDM_SEARCH_MARKALLEXT4, IDM_SEARCH_UNMARKALLEXT4, IDM_SEARCH_GOPREVMARKER4, IDM_SEARCH_STYLE4TOCLIP } },
+		{ IDM_SEARCH_GONEXTMARKER3, SCE_UNIVERSAL_FOUND_STYLE_EXT3, { IDM_SEARCH_MARKALLEXT3, IDM_SEARCH_UNMARKALLEXT3, IDM_SEARCH_GOPREVMARKER3, IDM_SEARCH_STYLE3TOCLIP } },
+		{ IDM_SEARCH_GONEXTMARKER2, SCE_UNIVERSAL_FOUND_STYLE_EXT2, { IDM_SEARCH_MARKALLEXT2, IDM_SEARCH_UNMARKALLEXT2, IDM_SEARCH_GOPREVMARKER2, IDM_SEARCH_STYLE2TOCLIP } },
+		{ IDM_SEARCH_GONEXTMARKER1, SCE_UNIVERSAL_FOUND_STYLE_EXT1, { IDM_SEARCH_MARKALLEXT1, IDM_SEARCH_UNMARKALLEXT1, IDM_SEARCH_GOPREVMARKER1, IDM_SEARCH_STYLE1TOCLIP } },
+		{ IDM_SEARCH_GONEXTMARKER_DEF, SCE_UNIVERSAL_FOUND_STYLE, { IDM_SEARCH_GOPREVMARKER_DEF, IDM_SEARCH_MARKEDTOCLIP } }
+	};
+
+	for (int j = 0; j < sizeof(bitmapOnStyleMenuItemsInfo) / sizeof(bitmapOnStyleMenuItemsInfo[0]); ++j)
+	{
+		StyleArray& stylers = NppParameters::getInstance().getMiscStylerArray();
+		int iFind = stylers.getStylerIndexByID(bitmapOnStyleMenuItemsInfo[j].styleIndic);
+		
+		if (iFind != -1)
+		{
+			Style const* pStyle = &(stylers.getStyler(iFind));
+
+			HDC hDC = GetDC(NULL);
+			const int bitmapXYsize = 16;
+			HBITMAP hNewBitmap = CreateCompatibleBitmap(hDC, bitmapXYsize, bitmapXYsize);
+			HDC hDCn = CreateCompatibleDC(hDC);
+			HBITMAP hOldBitmap = static_cast<HBITMAP>(SelectObject(hDCn, hNewBitmap));
+			RECT rc = { 0, 0, bitmapXYsize, bitmapXYsize };
+
+			// paint full-size black square
+			HBRUSH hBlackBrush = CreateSolidBrush(RGB(0,0,0));
+			FillRect(hDCn, &rc, hBlackBrush);
+			DeleteObject(hBlackBrush);
+
+			// overpaint a slightly smaller colored square
+			rc.left = rc.top = 1;
+			rc.right = rc.bottom = bitmapXYsize - 1;
+			HBRUSH hColorBrush = CreateSolidBrush(pStyle->_bgColor);
+			FillRect(hDCn, &rc, hColorBrush);
+			DeleteObject(hColorBrush);
+
+			// restore old bitmap so we can delete it to avoid leak
+			SelectObject(hDCn, hOldBitmap);
+			DeleteDC(hDCn);
+			
+			SetMenuItemBitmaps(_mainMenuHandle, bitmapOnStyleMenuItemsInfo[j].firstOfThisColorMenuId, MF_BYCOMMAND, hNewBitmap, hNewBitmap);
+			for (int relatedMenuId : bitmapOnStyleMenuItemsInfo[j].sameColorMenuIds)
+			{
+				SetMenuItemBitmaps(_mainMenuHandle, relatedMenuId, MF_BYCOMMAND, hNewBitmap, NULL);
+			}
+		}
+	}
 }
 
 bool doCheck(HMENU mainHandle, int id)
@@ -2497,6 +2579,303 @@ void Notepad_plus::setUniModeText()
 	_statusBar.setText(uniModeTextString.c_str(), STATUSBAR_UNICODE_TYPE);
 }
 
+bool isUrlSchemeStartChar(TCHAR const c)
+{
+	return ((c >= 'A') && (c <= 'Z'))
+		|| ((c >= 'a') && (c <= 'z'));
+}
+
+bool isUrlSchemeDelimiter(TCHAR const c) // characters allowed immedeately before scheme
+{
+	return   ! (((c >= '0') && (c <= '9'))
+			 || ((c >= 'A') && (c <= 'Z'))
+			 || ((c >= 'a') && (c <= 'z'))
+			 ||  (c == '_'));
+}
+
+bool isUrlTextChar(TCHAR const c)
+{
+	if (c <= ' ') return false;
+	switch (c)
+	{
+		case '"':
+		case '#':
+		case '<':
+		case '>':
+		case '{':
+		case '}':
+		case '?':
+		case '\0x7f':
+			return false;
+	}
+	return true;
+}
+
+bool isUrlQueryDelimiter(TCHAR const c)
+{
+	switch(c)
+	{
+		case '&':
+		case '+':
+		case '=':
+		case ';':
+			return true;
+	}
+	return false;
+}
+
+bool isUrlSchemeSupported(INTERNET_SCHEME s)
+{
+	switch (s)
+	{
+		case INTERNET_SCHEME_FTP:
+		case INTERNET_SCHEME_HTTP:
+		case INTERNET_SCHEME_HTTPS:
+		case INTERNET_SCHEME_MAILTO:
+		case INTERNET_SCHEME_FILE:
+			return true;
+	}
+	return false;
+}
+
+// scanToUrlStart searches for a possible URL in <text>.
+// If a possible URL is found, then:
+// - True is returned.
+// - The number of characters between <text[start]> and the beginning of the URL candidate is stored in <distance>.
+// - The length of the URL scheme is stored in <schemeLength>.
+// If no URL is found, then:
+// - False is returned.
+// - The number of characters between <text[start]> and the end of text is stored in <distance>.
+bool scanToUrlStart(TCHAR *text, int textLen, int start, int* distance, int* schemeLength)
+{
+	int p = start;
+	int p0 = 0;
+	enum {sUnknown, sScheme} s = sUnknown;
+	while (p < textLen)
+	{
+		switch (s)
+		{
+			case sUnknown:
+				if (isUrlSchemeStartChar(text [p]) && ((p == 0) || isUrlSchemeDelimiter(text [p - 1])))
+				{
+					p0 = p;
+					s = sScheme;
+				}
+				break;
+
+			case sScheme:
+				if (text [p] == ':')
+				{
+					*distance = p0 - start;
+					*schemeLength = p - p0 + 1;
+					return true;
+				}
+				if (!isUrlSchemeStartChar(text [p]))
+					s = sUnknown;
+				break;
+		}
+		p++;
+	}
+	*schemeLength = 0;
+	*distance = p - start;
+	return false;
+}
+
+// scanToUrlEnd searches the end of an URL, coarsly parsing its main parts HostAndPath, Query and Fragment.
+//
+// In the query part, a simple pattern is enforced, to avoid that everything goes through as a query.
+// The pattern is kept simple, since there seem to be many different forms of queries used in the world.
+// The objective here is not to detect whether or not a query is malformed. The objective is, to let through
+// most of the real world's queries, and to sort out what is certainly not a query.
+//
+// The approach is:
+// - A query begins with '?', followed by any number of values,
+//   which are separated by a single delimiter character '&', '+', '=' or ';'.
+// - Each value may be enclosed in single or double quotes.
+//
+// The query pattern going through looks like this:
+// - ?abc;def;fgh="i j k"&'l m n'+opq
+//
+void scanToUrlEnd(TCHAR *text, int textLen, int start, int* distance)
+{
+	int p = start;
+	TCHAR q = 0;
+	enum {sHostAndPath, sQuery, sQueryAfterDelimiter, sQueryQuotes, sQueryAfterQuotes, sFragment} s = sHostAndPath;
+	while (p < textLen)
+	{
+		switch (s)
+		{
+			case sHostAndPath: 
+				if (text [p] == '?')
+					s = sQuery;
+				else if (text [p] == '#')
+					s = sFragment;
+				else if (!isUrlTextChar (text [p]))
+				{
+					*distance = p - start;
+					return;
+				}
+				break;
+
+			case sQuery:
+				if (text [p] == '#')
+					s = sFragment;
+				else if (isUrlQueryDelimiter (text [p]))
+					s = sQueryAfterDelimiter;
+				else if (!isUrlTextChar(text [p]))
+				{
+					*distance = p - start;
+					return;
+				}
+				break;
+
+			case sQueryAfterDelimiter:
+				if ((text [p] == '\'') || (text [p] == '"') || (text [p] == '`'))
+				{
+					q = text [p];
+					s = sQueryQuotes;
+				}
+				else if (text [p] == '(')
+				{
+					q = ')';
+					s = sQueryQuotes;
+				}
+				else if (text [p] == '[')
+				{
+					q = ']';
+					s = sQueryQuotes;
+				}
+				else if (text [p] == '{')
+				{
+					q = '}';
+					s = sQueryQuotes;
+				}
+				else if (isUrlTextChar(text [p]))
+					s = sQuery;
+				else
+				{
+					*distance = p - start;
+					return;
+				}
+				break;
+
+			case sQueryQuotes:
+				if (text [p] < ' ')
+				{
+					*distance = p - start;
+					return;
+				}
+				if (text [p] == q)
+					s = sQueryAfterQuotes;
+				break;
+	
+			case sQueryAfterQuotes:
+				if (isUrlQueryDelimiter (text [p]))
+					s = sQueryAfterDelimiter;
+				else
+				{
+					*distance = p - start;
+					return;
+				}
+				break;
+
+			case sFragment:
+				if (!isUrlTextChar(text [p]))
+				{
+					*distance = p - start;
+					return;
+				}
+				break;
+		}
+		p++;
+	}
+	*distance = p - start;
+}
+
+// removeUnwantedTrailingCharFromUrl removes a single unwanted trailing character from an URL.
+// It has to be called repeatedly, until it returns false, meaning that all unwanted characters are gone.
+bool removeUnwantedTrailingCharFromUrl (TCHAR const *text, int* length)
+{
+	int l = *length - 1;
+	if (l <= 0) return false;
+	{ // remove unwanted single characters
+		const TCHAR *singleChars = L".,:;?!#";
+		for (int i = 0; singleChars [i]; i++)
+			if (text [l] == singleChars [i])
+			{
+				*length = l;
+				return true;
+			}
+	}
+	{ // remove unwanted closing parenthesis
+		const TCHAR *closingParenthesis = L")]";
+		const TCHAR *openingParenthesis = L"([";
+		for (int i = 0; closingParenthesis [i]; i++)
+			if (text [l] == closingParenthesis [i])
+			{
+				int count = 0;
+				for (int j = l - 1; j >= 0; j--)
+				{
+					if (text [j] == closingParenthesis [i])
+						count++;
+					if (text [j] == openingParenthesis [i])
+						if (count > 0)
+							count--;
+						else
+							return false;
+				}
+				if (count != 0)
+					return false;
+				*length = l;
+				return true;
+			}
+	}
+	return false;
+}
+
+// isUrl checks, whether there is a valid URL at <text [start]>.
+// If yes:
+// - True is returned.
+// - The length of the URL is stored in <segmentLen>.
+// If no:
+// - False is returned.
+// - The number of characters between <text[start]> and the next URL is stored in <segementLen>.
+// - If no URL is found at all, then the number of characters between <text[start]> and the end of text is stored in <segmentLen>.
+bool isUrl(TCHAR * text, int textLen, int start, int* segmentLen)
+{
+	int dist = 0, schemeLen = 0;
+	if (scanToUrlStart(text, textLen, start, & dist, & schemeLen))
+	{
+		if (dist)
+		{
+			*segmentLen = dist;
+			return false;
+		}
+		int len = 0;
+		scanToUrlEnd (text, textLen, start + schemeLen, & len);
+		if (len)
+		{
+			len += schemeLen;
+			URL_COMPONENTS url;
+			memset (& url, 0, sizeof(url));
+			url.dwStructSize = sizeof(url);
+			bool r  = InternetCrackUrl(& text [start], len, 0, & url) && isUrlSchemeSupported(url.nScheme);
+			if (r)
+			{
+				while (removeUnwantedTrailingCharFromUrl (& text [start], & len));
+				*segmentLen = len;
+				return true;
+			}
+		}
+		len = 1;
+		int lMax = textLen - start;
+		while (isUrlSchemeStartChar(text[start+len]) && (len < lMax)) len++;
+		*segmentLen = len;
+		return false;
+	}
+	*segmentLen = dist;
+	return false;
+}
 
 void Notepad_plus::addHotSpot(ScintillaEditView* view)
 {
@@ -2530,23 +2909,38 @@ void Notepad_plus::addHotSpot(ScintillaEditView* view)
 	LRESULT indicFore = pView->execute(SCI_STYLEGETFORE, STYLE_DEFAULT);
 	pView->execute(SCI_SETINDICATORVALUE, indicFore);
 
-	pView->execute(SCI_SETSEARCHFLAGS, SCFIND_REGEXP|SCFIND_POSIX);
-	pView->execute(SCI_SETTARGETRANGE, startPos, endPos);
-	int posFound = static_cast<int32_t>(pView->execute(SCI_SEARCHINTARGET, strlen(URL_REG_EXPR), reinterpret_cast<LPARAM>(URL_REG_EXPR)));
-
-	while (posFound != -1 && posFound != -2)
+	UINT cp = static_cast<UINT>(pView->execute(SCI_GETCODEPAGE));
+	char *encodedText = new char[endPos - startPos + 1];
+	pView->getText(encodedText, startPos, endPos);
+	TCHAR *wideText = new TCHAR[endPos - startPos + 1];
+	int wideTextLen = MultiByteToWideChar(cp, 0, encodedText, endPos - startPos + 1, (LPWSTR) wideText, endPos - startPos + 1) - 1;
+	delete[] encodedText;
+	if (wideTextLen > 0)
 	{
-		int end = int(pView->execute(SCI_GETTARGETEND));
-		int foundTextLen = end - posFound;
-		if (posFound > startPos)
-			pView->execute(SCI_INDICATORCLEARRANGE, startPos, posFound - startPos);
-		pView->execute(SCI_INDICATORFILLRANGE, posFound, foundTextLen);
-		startPos = posFound + foundTextLen;
-		pView->execute(SCI_SETTARGETRANGE, startPos, endPos);
-		posFound = static_cast<int32_t>(pView->execute(SCI_SEARCHINTARGET, strlen(URL_REG_EXPR), reinterpret_cast<LPARAM>(URL_REG_EXPR)));
+		int startWide = 0;
+		int lenWide = 0;
+		int startEncoded = 0;
+		int lenEncoded = 0;
+		while (true)
+		{
+			bool r = isUrl(wideText, wideTextLen, startWide, & lenWide);
+			if (lenWide <= 0)
+				break;
+			assert ((startWide + lenWide) <= wideTextLen);
+			lenEncoded = WideCharToMultiByte(cp, 0, & wideText [startWide], lenWide, NULL, 0, NULL, NULL);
+			if (r)
+				pView->execute(SCI_INDICATORFILLRANGE, startEncoded + startPos, lenEncoded);
+			else
+				pView->execute(SCI_INDICATORCLEARRANGE, startEncoded + startPos, lenEncoded);
+			startWide += lenWide;
+			startEncoded += lenEncoded;
+			if ((startWide >= wideTextLen) || ((startEncoded + startPos) >= endPos))
+				break;
+		}
+		assert ((startEncoded + startPos) == endPos);
+		assert (startWide == wideTextLen);
 	}
-	if (endPos > startPos)
-		pView->execute(SCI_INDICATORCLEARRANGE, startPos, endPos - startPos);
+	delete[] wideText;
 }
 
 bool Notepad_plus::isConditionExprLine(int lineNumber)
@@ -2617,7 +3011,7 @@ void Notepad_plus::maintainIndentation(TCHAR ch)
 		return;
 
 	if (type == L_C || type == L_CPP || type == L_JAVA || type == L_CS || type == L_OBJC ||
-		type == L_PHP || type == L_JS || type == L_JAVASCRIPT || type == L_JSP || type == L_CSS || type == L_PERL || type == L_RUST)
+		type == L_PHP || type == L_JS || type == L_JAVASCRIPT || type == L_JSP || type == L_CSS || type == L_PERL || type == L_RUST || type == L_POWERSHELL)
 	{
 		if (((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
 			(eolMode == SC_EOL_CR && ch == '\r'))
@@ -2660,7 +3054,7 @@ void Notepad_plus::maintainIndentation(TCHAR ch)
 				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
 			}
 			// These languages do no support single line control structures without braces.
-			else if (type == L_PERL || type == L_RUST)
+			else if (type == L_PERL || type == L_RUST || L_POWERSHELL)
 			{
 				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
 			}
@@ -3234,36 +3628,92 @@ int Notepad_plus::wordCount()
     return _findReplaceDlg.processAll(ProcessCountAll, &env, true);
 }
 
-
 void Notepad_plus::updateStatusBar()
 {
-    TCHAR strLnCol[128];
-	TCHAR strSel[64];
-	int selByte = 0;
-	int selLine = 0;
+	// these sections of status bar NOT updated by this function:
+	// STATUSBAR_DOC_TYPE , STATUSBAR_EOF_FORMAT , STATUSBAR_UNICODE_TYPE
 
-	_pEditView->getSelectedCount(selByte, selLine);
-
-	long selected_length = _pEditView->getUnicodeSelectedLength();
-	if (selected_length != -1)
-		wsprintf(strSel, TEXT("Sel : %s | %s"), commafyInt(selected_length).c_str(), commafyInt(selLine).c_str());
-	else
-		wsprintf(strSel, TEXT("Sel : %s"), TEXT("N/A"));
-
-	wsprintf(strLnCol, TEXT("Ln : %s    Col : %s    %s"),
-		commafyInt(_pEditView->getCurrentLineNumber() + 1).c_str(),
-		commafyInt(_pEditView->getCurrentColumnNumber() + 1).c_str(),
-		strSel);
-
-    _statusBar.setText(strLnCol, STATUSBAR_CUR_POS);
-
-    TCHAR strDocLen[256];
+	TCHAR strDocLen[256];
 	wsprintf(strDocLen, TEXT("length : %s    lines : %s"),
 		commafyInt(_pEditView->getCurrentDocLen()).c_str(),
 		commafyInt(_pEditView->execute(SCI_GETLINECOUNT)).c_str());
+	_statusBar.setText(strDocLen, STATUSBAR_DOC_SIZE);
 
-    _statusBar.setText(strDocLen, STATUSBAR_DOC_SIZE);
-    _statusBar.setText(_pEditView->execute(SCI_GETOVERTYPE) ? TEXT("OVR") : TEXT("INS"), STATUSBAR_TYPING_MODE);
+	TCHAR strSel[64];
+
+	int numSelections = static_cast<int>(_pEditView->execute(SCI_GETSELECTIONS));
+	if (numSelections == 1)
+	{
+		if (_pEditView->execute(SCI_GETSELECTIONEMPTY))
+		{
+			int currPos = static_cast<int>(_pEditView->execute(SCI_GETCURRENTPOS));
+			wsprintf(strSel, TEXT("Pos : %s"), commafyInt(currPos + 1).c_str());
+		}
+		else
+		{
+			const std::pair<int, int> oneSelCharsAndLines = _pEditView->getSelectedCharsAndLinesCount();
+			wsprintf(strSel, TEXT("Sel : %s | %s"),
+				commafyInt(oneSelCharsAndLines.first).c_str(),
+				commafyInt(oneSelCharsAndLines.second).c_str());
+		}
+	}
+	else if (_pEditView->execute(SCI_SELECTIONISRECTANGLE))
+	{
+		const std::pair<int, int> rectSelCharsAndLines = _pEditView->getSelectedCharsAndLinesCount();
+
+		bool sameCharCountOnEveryLine = true;
+		int maxLineCharCount = 0;
+
+		for (int sel = 0; sel < numSelections; ++sel)
+		{
+			int start = static_cast<int>(_pEditView->execute(SCI_GETSELECTIONNSTART, sel));
+			int end = static_cast<int>(_pEditView->execute(SCI_GETSELECTIONNEND, sel));
+			int lineCharCount = static_cast<int>(_pEditView->execute(SCI_COUNTCHARACTERS, start, end));
+
+			if (sel == 0)
+			{
+				maxLineCharCount = lineCharCount;
+			}
+			else 
+			{
+				if (lineCharCount != maxLineCharCount)
+				{
+					sameCharCountOnEveryLine = false;
+					if (lineCharCount > maxLineCharCount)
+					{
+						maxLineCharCount = lineCharCount;
+					}
+				}
+			}
+		}
+
+		wsprintf(strSel, TEXT("Sel : %sx%s %s %s"),
+			commafyInt(numSelections).c_str(),  // lines (rows) in rectangular selection
+			commafyInt(maxLineCharCount).c_str(),  // show maximum width for columns
+			sameCharCountOnEveryLine ? TEXT("=") : TEXT("->"),
+			commafyInt(rectSelCharsAndLines.first).c_str());
+	}
+	else  // multiple stream selections
+	{
+		const int maxSelsToProcessLineCount = 99;  // limit the number of selections to process, for performance reasons
+		const std::pair<int, int> multipleSelCharsAndLines = _pEditView->getSelectedCharsAndLinesCount(maxSelsToProcessLineCount);
+
+		wsprintf(strSel, TEXT("Sel %s : %s | %s"),
+			commafyInt(numSelections).c_str(),
+			commafyInt(multipleSelCharsAndLines.first).c_str(),
+			numSelections <= maxSelsToProcessLineCount ?
+				commafyInt(multipleSelCharsAndLines.second).c_str() :
+				TEXT("..."));  // show ellipsis for line count if too many selections are active
+	}
+
+	TCHAR strLnColSel[128];
+	wsprintf(strLnColSel, TEXT("Ln : %s    Col : %s    %s"),
+		commafyInt(_pEditView->getCurrentLineNumber() + 1).c_str(),
+		commafyInt(_pEditView->getCurrentColumnNumber() + 1).c_str(),
+		strSel);
+	_statusBar.setText(strLnColSel, STATUSBAR_CUR_POS);
+
+	_statusBar.setText(_pEditView->execute(SCI_GETOVERTYPE) ? TEXT("OVR") : TEXT("INS"), STATUSBAR_TYPING_MODE);
 }
 
 void Notepad_plus::dropFiles(HDROP hdrop)
@@ -4561,14 +5011,14 @@ void Notepad_plus::getTaskListInfo(TaskListInfo *tli)
 	{
 		BufferID bufID = _pDocTab->getBufferByIndex(i);
 		Buffer * b = MainFileManager.getBufferByID(bufID);
-		int status = b->isReadOnly()?tb_ro:(b->isDirty()?tb_unsaved:tb_saved);
+		int status = b->isMonitoringOn()?tb_monitored:(b->isReadOnly()?tb_ro:(b->isDirty()?tb_unsaved:tb_saved));
 		tli->_tlfsLst.push_back(TaskLstFnStatus(currentView(), i, b->getFullPathName(), status, (void *)bufID));
 	}
 	for (int i = 0 ; i < nonCurrentNbDoc ; ++i)
 	{
 		BufferID bufID = _pNonDocTab->getBufferByIndex(i);
 		Buffer * b = MainFileManager.getBufferByID(bufID);
-		int status = b->isReadOnly()?tb_ro:(b->isDirty()?tb_unsaved:tb_saved);
+		int status = b->isMonitoringOn()?tb_monitored:(b->isReadOnly()?tb_ro:(b->isDirty()?tb_unsaved:tb_saved));
 		tli->_tlfsLst.push_back(TaskLstFnStatus(otherView(), i, b->getFullPathName(), status, (void *)bufID));
 	}
 }
@@ -5129,9 +5579,9 @@ bool Notepad_plus::dumpFiles(const TCHAR * outdir, const TCHAR * fileprefix)
 		const TCHAR * unitext = (docbuf->getUnicodeMode() != uni8Bit)?TEXT("_utf8"):TEXT("");
 		wsprintf(savePath, TEXT("%s\\%s%03d%s.dump"), outdir, fileprefix, i, unitext);
 
-		bool res = MainFileManager.saveBuffer(docbuf->getID(), savePath);
+		SavingStatus res = MainFileManager.saveBuffer(docbuf->getID(), savePath);
 
-		somethingsaved |= res;
+		somethingsaved |= (res == SavingStatus::SaveOK);
 	}
 
 	return somethingsaved || !somedirty;
@@ -6843,6 +7293,34 @@ void Notepad_plus::showQuote(const QuoteParams* quote) const
 
 	HANDLE hThread = ::CreateThread(NULL, 0, threadTextPlayer, &params, 0, NULL);
 	::CloseHandle(hThread);
+}
+
+void Notepad_plus::minimizeDialogs()
+{
+	static StaticDialog* modelessDlgs[] = {&_findReplaceDlg, &_aboutDlg, &_debugInfoDlg, &_runDlg, &_goToLineDlg, &_colEditorDlg, &_configStyleDlg,\
+		&_preference, &_pluginsAdminDlg, &_findCharsInRangeDlg, &_md5FromFilesDlg, &_md5FromTextDlg, &_sha2FromFilesDlg, &_sha2FromTextDlg, &_runMacroDlg};
+	
+	static size_t nbModelessDlg = sizeof(modelessDlgs) / sizeof(StaticDialog*);
+
+	for (size_t i = 0; i < nbModelessDlg; ++i)
+	{
+		StaticDialog* pDlg = modelessDlgs[i];
+		if (pDlg->isCreated() && pDlg->isVisible())
+		{
+			pDlg->display(false);
+			_sysTrayHiddenHwnd.push_back(pDlg->getHSelf());
+		}
+	}
+}
+
+void Notepad_plus::restoreMinimizeDialogs()
+{
+	size_t nbDialogs = _sysTrayHiddenHwnd.size();
+	for (int i = (static_cast<int>(nbDialogs) - 1); i >= 0; i--)
+	{
+		::ShowWindow(_sysTrayHiddenHwnd[i], SW_SHOW);
+		_sysTrayHiddenHwnd.erase(_sysTrayHiddenHwnd.begin() + i);
+	}
 }
 
 void Notepad_plus::launchDocumentBackupTask()

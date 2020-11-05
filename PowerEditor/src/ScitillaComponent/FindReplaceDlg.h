@@ -360,7 +360,7 @@ private :
 	LONG _initialClientWidth;
 
 	DIALOG_TYPE _currentStatus;
-	RECT _findClosePos, _replaceClosePos, _findInFilesClosePos;
+	RECT _findClosePos, _replaceClosePos, _findInFilesClosePos, _markClosePos;
 	RECT _countInSelFramePos, _replaceInSelFramePos;
 	RECT _countInSelCheckPos, _replaceInSelCheckPos;
 
