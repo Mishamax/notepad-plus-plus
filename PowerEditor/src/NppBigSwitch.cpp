@@ -1516,7 +1516,8 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					::GetCursorPos(&p);
 					ContextMenu scintillaContextmenu;
 					std::vector<MenuItemUnit>& tmp = nppParam.getContextMenuItems();
-					scintillaContextmenu.create(hwnd, tmp, _mainMenuHandle);
+					bool copyLink = (_pEditView->getSelectedTextCount() == 0) && _pEditView->getIndicatorRange(URL_INDIC);
+					scintillaContextmenu.create(hwnd, tmp, _mainMenuHandle, copyLink);
 					scintillaContextmenu.display(p);
 					return TRUE;
 				}
@@ -2106,6 +2107,21 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				lstrcpy(reinterpret_cast<TCHAR *>(lParam), pluginHomePath.c_str());
 			}
 			return pluginHomePath.length();
+		}
+
+		case NPPM_GETSETTINGSONCLOUDPATH:
+		{
+			const NppGUI & nppGUI = nppParam.getNppGUI();
+			generic_string settingsOnCloudPath = nppGUI._cloudPath;
+			if (lParam != 0)
+			{
+				if (settingsOnCloudPath.length() >= static_cast<size_t>(wParam))
+				{
+					return 0;
+				}
+				lstrcpy(reinterpret_cast<TCHAR *>(lParam), settingsOnCloudPath.c_str());
+			}
+			return settingsOnCloudPath.length();
 		}
 
 		case NPPM_MSGTOPLUGIN :
