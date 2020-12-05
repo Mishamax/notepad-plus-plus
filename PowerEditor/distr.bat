@@ -19,4 +19,5 @@ copy "bin64\shortcuts.xml"           "%DISTR%"
 copy "bin64\stylers.model.xml"       "%DISTR%"
 copy "bin64\userDefineLang.xml"      "%DISTR%"
 
-xcopy "bin64\plugins" "%DISTR%" /e
+if not exist "%DISTR%\plugins" mkdir "%DISTR%\plugins"
+xcopy "bin64\plugins" "%DISTR%\plugins" /e
