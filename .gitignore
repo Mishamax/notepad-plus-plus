@@ -69,7 +69,6 @@ PowerEditor/bin/shortcuts.xml
 PowerEditor/bin/userDefineLang.xml
 PowerEditor/bin/backup/
 PowerEditor/bin/localization/
-PowerEditor/bin/plugins/
 PowerEditor/bin/updater/
 PowerEditor/bin/functionList/
 PowerEditor/bin/themes/
@@ -89,7 +88,6 @@ PowerEditor/bin64/shortcuts.xml
 PowerEditor/bin64/userDefineLang.xml
 PowerEditor/bin64/backup/
 PowerEditor/bin64/localization/
-PowerEditor/bin64/plugins/
 PowerEditor/bin64/updater/
 PowerEditor/bin64/themes/
 PowerEditor/installer/bin/wingup/

@@ -18,3 +18,5 @@ copy "bin64\SciLexer.dll"            "%DISTR%"
 copy "bin64\shortcuts.xml"           "%DISTR%"
 copy "bin64\stylers.model.xml"       "%DISTR%"
 copy "bin64\userDefineLang.xml"      "%DISTR%"
+
+xcopy "bin64\plugins" "%DISTR%" /e
