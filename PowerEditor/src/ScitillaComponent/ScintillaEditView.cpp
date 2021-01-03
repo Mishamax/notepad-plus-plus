@@ -2735,37 +2735,36 @@ void ScintillaEditView::setLineIndent(int line, int indent) const
 
 void ScintillaEditView::updateLineNumberWidth()
 {
-	if (_lineNumbersShown)
+	const ScintillaViewParams& svp = NppParameters::getInstance().getSVP();
+	if (svp._lineNumberMarginShow)
 	{
 		auto linesVisible = execute(SCI_LINESONSCREEN);
 		if (linesVisible)
 		{
-			auto firstVisibleLineVis = execute(SCI_GETFIRSTVISIBLELINE);
-			auto lastVisibleLineVis = linesVisible + firstVisibleLineVis + 1;
+			int nbDigits = 0;
 
-			auto lastVisibleLineDoc = execute(SCI_DOCLINEFROMVISIBLE, lastVisibleLineVis);
-
-			int nbDigits = 3; // minimum number of digit should be 3
-			if (lastVisibleLineDoc < 1000) {} //nbDigits = 3;
-			else if (lastVisibleLineDoc < 10000) nbDigits = 4;
-			else if (lastVisibleLineDoc < 100000) nbDigits = 5;
-			else if (lastVisibleLineDoc < 1000000) nbDigits = 6;
-			else // rare case
+			if (svp._lineNumberMarginDynamicWidth)
 			{
-				nbDigits = 7;
-				lastVisibleLineDoc /= 1000000;
+				auto firstVisibleLineVis = execute(SCI_GETFIRSTVISIBLELINE);
+				auto lastVisibleLineVis = linesVisible + firstVisibleLineVis + 1;
+				auto lastVisibleLineDoc = execute(SCI_DOCLINEFROMVISIBLE, lastVisibleLineVis);
 
-				while (lastVisibleLineDoc)
-				{
-					lastVisibleLineDoc /= 10;
-					++nbDigits;
-				}
+				nbDigits = nbDigitsFromNbLines(lastVisibleLineDoc);
+				nbDigits = nbDigits < 3 ? 3 : nbDigits;
 			}
+			else
+			{
+				auto nbLines = execute(SCI_GETLINECOUNT);
+				nbDigits = nbDigitsFromNbLines(nbLines);
+				nbDigits = nbDigits < 4 ? 4 : nbDigits;
+			}
+
 			auto pixelWidth = 8 + nbDigits * execute(SCI_TEXTWIDTH, STYLE_LINENUMBER, reinterpret_cast<LPARAM>("8"));
 			execute(SCI_SETMARGINWIDTHN, _SC_MARGE_LINENUMBER, pixelWidth);
 		}
 	}
 }
+
 
 const char * ScintillaEditView::getCompleteKeywordList(std::basic_string<char> & kwl, LangType langType, int keywordIndex)
 {
@@ -3332,6 +3331,22 @@ void ScintillaEditView::foldChanged(size_t line, int levelNow, int levelPrev)
 	}
 }
 
+bool ScintillaEditView::getIndicatorRange(int indicatorNumber, int *from, int *to, int *cur)
+{
+	int curPos = static_cast<int>(execute(SCI_GETCURRENTPOS));
+	int indicMsk = static_cast<int>(execute(SCI_INDICATORALLONFOR, curPos));
+	if (!(indicMsk & (1 << indicatorNumber)))
+		return false;
+	int startPos = static_cast<int>(execute(SCI_INDICATORSTART, indicatorNumber, curPos));
+	int endPos = static_cast<int>(execute(SCI_INDICATOREND, indicatorNumber, curPos));
+	if ((curPos < startPos) || (curPos > endPos))
+		return false;
+	if (from) *from = startPos;
+	if (to) *to = endPos;
+	if (cur) *cur = curPos;
+	return true;
+};
+
 
 void ScintillaEditView::scrollPosToCenter(size_t pos)
 {
@@ -3352,6 +3367,7 @@ void ScintillaEditView::scrollPosToCenter(size_t pos)
 		middleLine = lastVisibleDocLine -  nbLine/2;
 	int nbLines2scroll =  line - middleLine;
 	scroll(0, nbLines2scroll);
+	execute(SCI_ENSUREVISIBLEENFORCEPOLICY, line);
 }
 
 void ScintillaEditView::hideLines()

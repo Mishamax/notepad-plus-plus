@@ -179,8 +179,8 @@ static const WinMenuKeyDefinition winKeyDefs[] =
 	{ VK_NULL,    IDM_EDIT_CHANGESEARCHENGINE,                  false, false, false, nullptr },
 //  { VK_NULL,    IDM_EDIT_COLUMNMODETIP,                       false, false, false, nullptr },
 	{ VK_C,       IDM_EDIT_COLUMNMODE,                          false, true,  false, nullptr },
-	{ VK_NULL,    IDM_EDIT_CHAR_PANEL,                          false, false, false, nullptr },
-	{ VK_NULL,    IDM_EDIT_CLIPBOARDHISTORY_PANEL,              false, false, false, nullptr },
+	{ VK_NULL,    IDM_EDIT_CHAR_PANEL,                          false, false, false, TEXT("Toggle Character Panel") },
+	{ VK_NULL,    IDM_EDIT_CLIPBOARDHISTORY_PANEL,              false, false, false, TEXT("Toggle Clipboard History") },
 	{ VK_NULL,    IDM_EDIT_SETREADONLY,                         false, false, false, nullptr },
 	{ VK_NULL,    IDM_EDIT_CLEARREADONLY,                       false, false, false, nullptr },
 	{ VK_F,       IDM_SEARCH_FIND,                              true,  false, false, nullptr },
@@ -1005,8 +1005,6 @@ bool NppParameters::load()
 {
 	L_END = L_EXTERNAL;
 	bool isAllLaoded = true;
-	for (int i = 0 ; i < NB_LANG ; _langList[i] = NULL, ++i)
-	{}
 
 	_isx64 = sizeof(void *) == 8;
 
@@ -1037,6 +1035,9 @@ bool NppParameters::load()
 	_pluginRootDir = _nppPath;
 	PathAppend(_pluginRootDir, TEXT("plugins"));
 
+	//
+	// the 3rd priority: general default configuration
+	//
 	generic_string nppPluginRootParent;
 	if (_isLocal)
 	{
@@ -1078,7 +1079,9 @@ bool NppParameters::load()
 	generic_string cloudChoicePath{_userPath};
 	cloudChoicePath += TEXT("\\cloud\\choice");
 
-	// cloudChoicePath doesn't exist, just quit
+	//
+	// the 2nd priority: cloud Choice Path
+	//
 	if (::PathFileExists(cloudChoicePath.c_str()))
 	{
 		// Read cloud choice
@@ -1086,7 +1089,7 @@ bool NppParameters::load()
 		WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 		std::wstring cloudChoiceStrW = wmc.char2wchar(cloudChoiceStr.c_str(), SC_CP_UTF8);
 
-		if (not cloudChoiceStrW.empty() and ::PathFileExists(cloudChoiceStrW.c_str()))
+		if (!cloudChoiceStrW.empty() && ::PathFileExists(cloudChoiceStrW.c_str()))
 		{
 			_userPath = cloudChoiceStrW;
 			_nppGUI._cloudPath = cloudChoiceStrW;
@@ -1094,6 +1097,26 @@ bool NppParameters::load()
 		}
 	}
 
+	//
+	// the 1st priority: custom settings dir via command line argument
+	//
+	if (!_cmdSettingsDir.empty())
+	{
+		if (!::PathIsDirectory(_cmdSettingsDir.c_str()))
+		{
+			// The following text is not translatable.
+			// _pNativeLangSpeaker is initialized AFTER _userPath being dterminated because nativeLang.xml is from from _userPath.
+			generic_string errMsg = TEXT("The given path\r");
+			errMsg += _cmdSettingsDir;
+			errMsg += TEXT("\nvia command line \"-settingsDir=\" is not a valid directory.\rThis argument will be ignored.");
+			::MessageBox(NULL, errMsg.c_str(), TEXT("Invalid directory"), MB_OK);
+		}
+		else
+		{
+			_userPath = _cmdSettingsDir;
+			_sessionPath = _userPath; // reset session path
+		}
+	}
 
 	//-------------------------------------//
 	// Transparent function for w2k and xp //
@@ -4449,7 +4472,7 @@ void NppParameters::feedGUIParameters(TiXmlNode *node)
 			{
 				const TCHAR* val = n->Value();
 				if (val)
-				_nppGUI._uriShemes = val;
+				_nppGUI._uriSchemes = val;
 			}
 		}
 
@@ -5270,6 +5293,16 @@ void NppParameters::feedScintillaParam(TiXmlNode *node)
 			_svp._lineNumberMarginShow = false;
 	}
 
+	// Line Number Margin dynamic width
+	nm = element->Attribute(TEXT("lineNumberDynamicWidth"));
+	if (nm)
+	{
+		if (!lstrcmp(nm, TEXT("yes")))
+			_svp._lineNumberMarginDynamicWidth = true;
+		else if (!lstrcmp(nm, TEXT("no")))
+			_svp._lineNumberMarginDynamicWidth = false;
+	}
+
 	// Bookmark Margin
 	nm = element->Attribute(TEXT("bookMarkMargin"));
 	if (nm)
@@ -5671,6 +5704,7 @@ bool NppParameters::writeScintillaParams()
 	}
 
 	(scintNode->ToElement())->SetAttribute(TEXT("lineNumberMargin"), _svp._lineNumberMarginShow?TEXT("show"):TEXT("hide"));
+	(scintNode->ToElement())->SetAttribute(TEXT("lineNumberDynamicWidth"), _svp._lineNumberMarginDynamicWidth ?TEXT("yes"):TEXT("no"));
 	(scintNode->ToElement())->SetAttribute(TEXT("bookMarkMargin"), _svp._bookMarkMarginShow?TEXT("show"):TEXT("hide"));
 	(scintNode->ToElement())->SetAttribute(TEXT("indentGuideLine"), _svp._indentGuideLineShow?TEXT("show"):TEXT("hide"));
 	const TCHAR *pFolderStyleStr = (_svp._folderStyle == FOLDER_STYLE_SIMPLE)?TEXT("simple"):
@@ -6013,7 +6047,7 @@ void NppParameters::createXmlTreeFromGUIParams()
 	{
 		TiXmlElement *GUIConfigElement = (newGUIRoot->InsertEndChild(TiXmlElement(TEXT("GUIConfig"))))->ToElement();
 		GUIConfigElement->SetAttribute(TEXT("name"), TEXT("uriCustomizedSchemes"));
-		GUIConfigElement->InsertEndChild(TiXmlText(_nppGUI._uriShemes.c_str()));
+		GUIConfigElement->InsertEndChild(TiXmlText(_nppGUI._uriSchemes.c_str()));
 	}
 	// <GUIConfig name = "globalOverride" fg = "no" bg = "no" font = "no" fontSize = "no" bold = "no" italic = "no" underline = "no" / >
 	{
