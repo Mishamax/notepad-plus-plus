@@ -937,7 +937,7 @@ struct ScintillaViewParams
 	bool _whiteSpaceShow = false;
 	bool _eolShow = false;
 	int _borderWidth = 2;
-	bool _scrollBeyondLastLine = true;
+	bool _scrollBeyondLastLine = false;
 	bool _rightClickKeepsSelection = false;
 	bool _disableAdvancedScrolling = false;
 	bool _doSmoothFont = false;
