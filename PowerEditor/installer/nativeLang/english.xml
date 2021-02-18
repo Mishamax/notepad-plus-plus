@@ -3,7 +3,7 @@
 The comments are here for explanation, it's not necessary to translate them.
 -->
 <NotepadPlus>
-    <Native-Langue name="English" filename="english.xml" version="7.9.2">
+    <Native-Langue name="English" filename="english.xml" version="7.9.3">
         <Menu>
             <Main>
                 <!-- Main Menu Entries -->
@@ -868,10 +868,9 @@ You can define several column markers by using white space to separate the diffe
                 </NewDoc>
 
                 <DefaultDir title="Default Directory">
-                    <Item id="6413" name="Default Directory (Open/Save)"/>
+                    <Item id="6413" name="Default Open/Save file Directory"/>
                     <Item id="6414" name="Follow current document"/>
                     <Item id="6415" name="Remember last used directory"/>
-                    <Item id="6430" name="Use new style dialog (without Unix style path capacity)"/>
                     <Item id="6431" name="Open all files of folder instead of launching Folder as Workspace on folder dropping"/>
                 </DefaultDir>
 
@@ -1042,7 +1041,7 @@ You can define several column markers by using white space to separate the diffe
                     <Item id="6325" name="Scroll to the last line after update"/>
                     <Item id="6322" name="Session file ext.:"/>
                     <Item id="6323" name="Enable Notepad++ auto-updater"/>
-                    <Item id="6351" name="Set Save dialog file extension filter to .* instead of .txt for Normal Text"/>
+                    <Item id="6351" name="Set Save dialog file extension filter to *.*"/>
                     <Item id="6324" name="Document Switcher (Ctrl+TAB)"/>
                     <Item id="6331" name="Show only filename in title bar"/>
                     <Item id="6334" name="Autodetect character encoding"/>
@@ -1377,9 +1376,11 @@ Find in all files except exe, obj &amp;&amp; log:
             <summary-nbsel1 value=" selected characters ("/>
             <summary-nbsel2 value=" bytes) in "/>
             <summary-nbrange value=" ranges"/>
+            <find-in-files-progress-title value="Find In Files progress..."/>
             <replace-in-files-confirm-title value="Are you sure?"/>
             <replace-in-files-confirm-directory value="Are you sure you want to replace all occurrences in :"/>
             <replace-in-files-confirm-filetype value="For file type :"/>
+            <replace-in-files-progress-title value="Replace In Files progress..."/>
             <replace-in-open-docs-confirm-title value="Are you sure?"/>
             <replace-in-open-docs-confirm-message value="Are you sure you want to replace all occurrences in all open documents?"/>
             <find-result-caption value="Search results"/>
@@ -1390,6 +1391,7 @@ Find in all files except exe, obj &amp;&amp; log:
             <find-result-hits value="($INT_REPLACE$ hits)"/>
             <find-result-line-prefix value="Line"/> <!-- Must not begin with space or tab character -->
             <find-regex-zero-length-match value="zero length match" />
+            <session-save-folder-as-workspace value="Save Folder as Workspace" />
         </MiscStrings>
     </Native-Langue>
 </NotepadPlus>
